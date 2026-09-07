@@ -5,39 +5,49 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void append(struct JArray* array, JValue value) {
+#define DEFAULT_CAP 4
+#define MAKE_JArray                            \
+    (JValue){                                  \
+        .type = Array,                         \
+        .data = {.array = {.len = 0,           \
+                           .cap = DEFAULT_CAP, \
+                           .data = calloc(DEFAULT_CAP, sizeof(JValue))}}};
+
+static bool append(struct JArray* array, JValue value) {
     if (array->len >= array->cap) {
-        array->cap *= 2;
-        JValue* new = calloc(array->cap, sizeof(JValue));
-        memcpy(new, array->data, array->len * sizeof(JValue));
-        free(array->data);
-        array->data = new;
+        size_t next_cap = array->cap == 0 ? DEFAULT_CAP : array->cap * 2;
+        if (next_cap < array->cap ||
+            next_cap > (size_t)-1 / sizeof(*array->data)) {
+            return false;
+        }
+
+        JValue* next = realloc(array->data, next_cap * sizeof(*next));
+        if (next == NULL) return false;
+
+        array->data = next;
+        array->cap = next_cap;
     }
     array->data[array->len++] = value;
+    return true;
 }
 
 void JfreeValue(JValue* value) {
     switch (value->type) {
         case Array:
-            for (int i = 0; i < value->data.array.len; i++) {
+            for (size_t i = 0; i < value->data.array.len; i++) {
                 JfreeValue(&value->data.array.data[i]);
             }
             free(value->data.array.data);
         default:
             break;
     }
+    *value = (JValue){0};
 }
 
-static bool isWs(char c) {
-    char ws[] = {0x20, 0xA, 0xD, 0x9};
-    for (size_t i = 0; i < 4; ++i) {
-        if (c == ws[i]) return true;
-    }
-    return false;
-}
+static bool isWs(char c) { return c != '\0' && strchr(" \n\r\t", c) != NULL; }
 
 /* Define an abstract parser as
-char* parser(char* in, void* out?, ...);
+const char* parser(const char* in, void* out?, ...);
 parsers take in a string and try to perform its parse logic
 if success
     parsed value set to out if available
@@ -52,63 +62,59 @@ static const char* consumeWs(const char* in) {
     return in;
 }
 
-static const char* consumeLiteral(const char* in, char* lit) {
+static const char* consumeLiteral(const char* in, const char* lit) {
     const char* start = in;
     for (; lit[0] != '\0' && in[0] == lit[0]; ++in, ++lit);
     return lit[0] == '\0' ? in : start;
 }
 
-
 typedef const char* (*parser)(const char* in, JValue* out);
-const char* parseValue(const char* in, JValue* out);
+static const char* parseValue(const char* in, JValue* out);
 
 static const char* nullParser(const char* in, JValue* out) {
-    const char* new = consumeLiteral(in, "null");
-    if (new != in) {
+    const char* next = consumeLiteral(in, "null");
+    if (next != in) {
         out->type = Null;
     }
-    return new;
+    return next;
 }
 
 static const char* boolParser(const char* in, JValue* out) {
-    const char* new;
+    const char* next;
     out->type = Bool;
-    if ((new = consumeLiteral(in, "true")) != in) {
+    if ((next = consumeLiteral(in, "true")) != in) {
         out->data.boolean = true;
-    } else if ((new = consumeLiteral(in, "false")) != in) {
+    } else if ((next = consumeLiteral(in, "false")) != in) {
         out->data.boolean = false;
     } else {
         out->type = Undefined;
     }
-    return new;
+    return next;
 }
 
 static const char* arrayParser(const char* in, JValue* out) {
-    *out = (JValue){.type = Array,
-                    .data = {.array = {.len = 0,
-                                       .cap = 256,
-                                       .data = calloc(256, sizeof(JValue))}}};
-    const char* new;
+    *out = MAKE_JArray;
+    const char* next;
     const char* checkpoint = in;
     JValue curr = {0};
-    if ((new = consumeLiteral(checkpoint, "[")) == checkpoint) goto fail;
-    checkpoint = new = consumeWs(new);
-    if ((new = consumeLiteral(checkpoint, "]")) != checkpoint) goto pass;
-    if ((new = parseValue(checkpoint, &curr)) == checkpoint) goto fail;
-    checkpoint = new;
-    append(&out->data.array, curr);
+    if ((next = consumeLiteral(checkpoint, "[")) == checkpoint) goto fail;
+    checkpoint = next = consumeWs(next);
+    if ((next = consumeLiteral(checkpoint, "]")) != checkpoint) goto pass;
+    if ((next = parseValue(checkpoint, &curr)) == checkpoint) goto fail;
+    checkpoint = next;
+    if (!append(&out->data.array, curr)) goto fail;
     curr = (JValue){0};
-    while ((new = consumeLiteral(checkpoint, "]")) == checkpoint) {
-        checkpoint = new;
-        if ((new = consumeLiteral(checkpoint, ",")) == checkpoint) goto fail;
-        checkpoint = new;
-        if ((new = parseValue(checkpoint, &curr)) == checkpoint) goto fail;
-        checkpoint = new;
-        append(&out->data.array, curr);
+    while ((next = consumeLiteral(checkpoint, "]")) == checkpoint) {
+        checkpoint = next;
+        if ((next = consumeLiteral(checkpoint, ",")) == checkpoint) goto fail;
+        checkpoint = next;
+        if ((next = parseValue(checkpoint, &curr)) == checkpoint) goto fail;
+        checkpoint = next;
+        if (!append(&out->data.array, curr)) goto fail;
         curr = (JValue){0};
     }
 pass:
-    return new;
+    return next;
 fail:
     JfreeValue(&curr);
     JfreeValue(out);
@@ -116,26 +122,25 @@ fail:
     return in;
 }
 
-parser valueParsers[] = {nullParser, boolParser, arrayParser};
+static parser valueParsers[] = {nullParser, boolParser, arrayParser};
 
-const char* parseValue(const char* in, JValue* out) {
+static const char* parseValue(const char* in, JValue* out) {
     *out = (JValue){0};
-    const char* new = consumeWs(in);
+    const char* next = consumeWs(in);
     for (size_t i = 0;
          out->type == Undefined && i < sizeof(valueParsers) / sizeof(parser);
          ++i) {
-        new = valueParsers[i](new, out);
+        next = valueParsers[i](next, out);
     }
-    new = consumeWs(new);
-    return out->type != Undefined ? new : in;
+    next = consumeWs(next);
+    return out->type != Undefined ? next : in;
 }
 
 const char* Jparse(const char* in, JValue* out) {
-    const char* new = parseValue(in, out);
-    if (new[0] == '\0')
-        return new;
-    else {
+    const char* next = parseValue(in, out);
+    if (next[0] != '\0' || out->type == Undefined) {
         *out = (JValue){0};
         return in;
     }
+    return next;
 }

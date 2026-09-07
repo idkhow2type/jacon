@@ -15,7 +15,7 @@ void printValue(const JValue* value) {
             break;
         case Array:
             printf("[");
-            for (int i = 0; i < value->data.array.len; i++) {
+            for (size_t i = 0; i < value->data.array.len; i++) {
                 printValue(&value->data.array.data[i]);
                 if (i + 1 < value->data.array.len) printf(", ");
             }
@@ -30,7 +30,7 @@ void printValue(const JValue* value) {
 
 int main() {
     JValue* value = calloc(1, sizeof(JValue));
-    char* in = "[false,null,true]";
+    char* in = "  [true]";
     const char* new = Jparse(in, value);
     if (in == new) {
         printf("err\n");

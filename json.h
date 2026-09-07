@@ -1,7 +1,9 @@
-#include <stdbool.h>
 
 #ifndef JSON_H
 #define JSON_H
+
+#include <stdbool.h>
+#include <stddef.h>
 
 enum JType {
     Undefined,
@@ -15,8 +17,8 @@ enum JType {
 
 struct JArray {
     struct JValue* data;
-    int len;
-    int cap;
+    size_t len;
+    size_t cap;
 };
 
 typedef struct JValue {
