@@ -17,7 +17,7 @@ void printValue(const JValue* value) {
             printf("[");
             for (int i = 0; i < value->data.array.len; i++) {
                 printValue(&value->data.array.data[i]);
-                printf(", ");
+                if (i + 1 < value->data.array.len) printf(", ");
             }
             printf("]");
 
@@ -28,28 +28,16 @@ void printValue(const JValue* value) {
     }
 }
 
-void freeValue(JValue* value) {
-    switch (value->type) {
-        case Array:
-            for (int i = 0; i < value->data.array.len; i++) {
-                freeValue(&value->data.array.data[i]);
-            }
-            free(value->data.array.data);
-        default:
-            break;
-    }
-}
-
 int main() {
     JValue* value = calloc(1, sizeof(JValue));
-    char* in = "[true,[false,[null,[null,[null]]]]]";
-    char* new = parse(in, value);
+    char* in = "[false,null,true]";
+    const char* new = Jparse(in, value);
     if (in == new) {
         printf("err\n");
     } else {
         printValue(value);
         printf("\n");
     }
-    freeValue(value);
+    JfreeValue(value);
     free(value);
 }

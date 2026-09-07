@@ -28,6 +28,7 @@ typedef struct JValue {
     } data;
 } JValue;
 
-char* parse(char* in, JValue* out);
+const char* Jparse(const char* in, JValue* out);
+void JfreeValue(JValue* value);
 
 #endif
