@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 #ifndef JSON_H
 #define JSON_H
 
@@ -11,11 +13,21 @@ enum JType {
     Null,
 };
 
-typedef struct {
+struct JArray {
+    struct JValue* data;
+    int len;
+    int cap;
+};
+
+typedef struct JValue {
     enum JType type;
-    void* data;
+    union {
+        bool boolean;
+        double number;
+        struct JArray array;
+    } data;
 } JValue;
 
-int parse(char* in, JValue* out);
+char* parse(char* in, JValue* out);
 
 #endif
