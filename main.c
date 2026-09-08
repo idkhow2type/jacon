@@ -22,7 +22,11 @@ void printValue(const JValue* value) {
             printf("]");
             break;
         case String:
-            printf("\"%s\"", value->data.string);
+            printf("\"");
+            for (size_t i = 0; i < value->data.string.len; i++) {
+                printf("%c", value->data.string.data[i]);
+            }
+            printf("\"");
 
         default:
             break;
@@ -32,7 +36,7 @@ void printValue(const JValue* value) {
 int main() {
     JValue* value = calloc(1, sizeof(JValue));
     // char in[] = {'t', 'r', 'u', 'e'};
-    char in[] = "\"he\\u0000llo\"";
+    char in[] = "\"hello\\u1234\"";
     const char* new = Jparse(in, value);
     if (in == new) {
         printf("err\n");

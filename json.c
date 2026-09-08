@@ -31,6 +31,7 @@
     };
 
 DEFINE_ARRAY(JArray, struct JValue);
+DEFINE_ARRAY(JString, char);
 
 void JfreeValue(JValue* value) {
     switch (value->type) {
@@ -39,6 +40,10 @@ void JfreeValue(JValue* value) {
                 JfreeValue(&value->data.array.data[i]);
             }
             free(value->data.array.data);
+            break;
+        case String:
+            free(value->data.string.data);
+            break;
         default:
             break;
     }
@@ -46,7 +51,7 @@ void JfreeValue(JValue* value) {
 }
 
 // https://gist.github.com/MightyPork/52eda3e5677b4b03524e40c9f0ab1da5
-int utf8_encode(char* out, uint32_t utf) {
+static int utf8_encode(char* out, uint32_t utf) {
     if (utf <= 0x7F) {
         // Plain ASCII
         out[0] = (char)utf;
@@ -167,8 +172,6 @@ fail:
     return in;
 }
 
-DECLARE_ARRAY(JString, char);
-DEFINE_ARRAY(JString, char);
 static const char specialMap[] = {
     ['"'] = '"',  ['\\'] = '\\', ['/'] = '/',  ['b'] = '\b',
     ['f'] = '\f', ['n'] = '\n',  ['r'] = '\r', ['t'] = '\t',
@@ -196,8 +199,8 @@ static const char* stringParser(const char* in, JValue* out) {
         switch (flag) {
             case 'u':
                 // this is kinda hacky
-                checkpoint=--next;
-                
+                checkpoint = --next;
+
                 char hex;
                 uint32_t code = 0;
 
@@ -223,9 +226,11 @@ static const char* stringParser(const char* in, JValue* out) {
                     flag = 'u';
                     continue;
                 }
-                c = specialMap[(size_t)c];
+                c=specialMap[(size_t)c];
+                if (!c) goto fail;
+                JString_append(&str, c);
                 flag = 0;
-                /* fall through */
+                break;
             default:
                 if (c == '\\')
                     flag = c;
@@ -235,7 +240,7 @@ static const char* stringParser(const char* in, JValue* out) {
         }
     }
     JString_append(&str, '\0');
-    *out = (JValue){.type = String, .data = {.string = str.data}};
+    *out = (JValue){.type = String, .data = {.string = str}};
     return next;
 fail:
     *out = (JValue){0};

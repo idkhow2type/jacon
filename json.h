@@ -6,32 +6,32 @@
 #include <stddef.h>
 
 #define DECLARE_ARRAY(Name, T) \
-    typedef struct Name {              \
+    typedef struct Name {      \
         T* data;               \
         size_t len;            \
         size_t cap;            \
-    } Name;                         \
+    } Name;                    \
     bool Name##_append(Name* array, T value);
 
-enum JType {
-    Undefined,
-    Object,
-    Array,
-    String,
-    Number,
-    Bool,
-    Null,
-};
-
 DECLARE_ARRAY(JArray, struct JValue);
+// is null terminated, but null can appear mid buffer
+DECLARE_ARRAY(JString, char);
 
 typedef struct JValue {
-    enum JType type;
+    enum {
+        Undefined,
+        Object,
+        Array,
+        String,
+        Number,
+        Bool,
+        Null,
+    } type;
     union {
         bool boolean;
         double number;
-        struct JArray array;
-        char *string;
+        JArray array;
+        JString string;
     } data;
 } JValue;
 
