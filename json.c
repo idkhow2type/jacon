@@ -226,16 +226,22 @@ static const char* stringParser(const char* in, JValue* out) {
                     flag = 'u';
                     continue;
                 }
-                c=specialMap[(size_t)c];
+                c = specialMap[(size_t)c];
                 if (!c) goto fail;
                 JString_append(&str, c);
                 flag = 0;
                 break;
             default:
-                if (c == '\\')
-                    flag = c;
-                else
-                    JString_append(&str, c);
+                switch (c) {
+                    case '\\':
+                        flag = c;
+                        break;
+                    case '\0':
+                        goto fail;
+                    default:
+                        JString_append(&str, c);
+                        break;
+                }
                 break;
         }
     }
