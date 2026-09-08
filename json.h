@@ -5,6 +5,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#define DECLARE_ARRAY(Name, T) \
+    typedef struct Name {              \
+        T* data;               \
+        size_t len;            \
+        size_t cap;            \
+    } Name;                         \
+    bool Name##_append(Name* array, T value);
+
 enum JType {
     Undefined,
     Object,
@@ -15,11 +23,7 @@ enum JType {
     Null,
 };
 
-struct JArray {
-    struct JValue* data;
-    size_t len;
-    size_t cap;
-};
+DECLARE_ARRAY(JArray, struct JValue);
 
 typedef struct JValue {
     enum JType type;
@@ -27,6 +31,7 @@ typedef struct JValue {
         bool boolean;
         double number;
         struct JArray array;
+        char *string;
     } data;
 } JValue;
 

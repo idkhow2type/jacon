@@ -20,8 +20,9 @@ void printValue(const JValue* value) {
                 if (i + 1 < value->data.array.len) printf(", ");
             }
             printf("]");
-
             break;
+        case String:
+            printf("\"%s\"", value->data.string);
 
         default:
             break;
@@ -30,7 +31,8 @@ void printValue(const JValue* value) {
 
 int main() {
     JValue* value = calloc(1, sizeof(JValue));
-    char* in = "  [true]";
+    // char in[] = {'t', 'r', 'u', 'e'};
+    char in[] = "\"he\\u0000llo\"";
     const char* new = Jparse(in, value);
     if (in == new) {
         printf("err\n");

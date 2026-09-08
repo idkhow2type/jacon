@@ -8,6 +8,6 @@ main: main.o json.o
 	$(CC) $^ $(CFLAGS) -o $@
 
 clean:
-	rm -f tinywl tinywl.o
+	rm -f  main *.o
 
 .PHONY: all clean
