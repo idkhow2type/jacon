@@ -48,7 +48,7 @@ bool JString_cmp(JString a, JString b) {
 static uint64_t hash(const char* s, size_t len) {
     uint64_t hash = 14695981039346656037ULL;
 
-    for (size_t i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; ++i) {
         hash ^= (uint8_t)*s++;
         hash *= 1099511628211ULL;
     }
@@ -71,7 +71,7 @@ static bool resize(JObject* object) {
     size_t old_cap = object->cap;
     object->cap = next_cap;
     object->len = 0;
-    for (size_t i = 0; i < old_cap; i++) {
+    for (size_t i = 0; i < old_cap; ++i) {
         if (old[i].value.type != Undefined)
             JObject_set(object, old[i].key, old[i].value);
     }
@@ -86,7 +86,7 @@ bool JObject_set(JObject* object, JString key, JValue value) {
     bool override = false;
     for (size_t i = 0; object->data[h].value.type != Undefined &&
                        !(override = JString_cmp(object->data[h].key, key));
-         i++)
+         ++i)
         h = (h + (i + i * i) / 2) % object->cap;
 
     object->data[h] = (struct ObjectField){.value = value, .key = key};
@@ -96,22 +96,46 @@ bool JObject_set(JObject* object, JString key, JValue value) {
 
 JValue JObject_get(const JObject object, JString key) {
     size_t h = (hash(key.data, key.len) & (object.cap - 1));
-    for (size_t i = 0; !JString_cmp(object.data[h].key, key); i++)
+    for (size_t i = 0; !JString_cmp(object.data[h].key, key); ++i)
         h = (h + (i + i * i) / 2) % object.cap;
     return object.data[h].value;
 }
 
+bool JObject_iter(JObject object, size_t* i, JString* key, JValue* value) {
+    while ((*i)++ < object.cap) {
+        if (object.data[*i].value.type != Undefined) {
+            *key = object.data[*i].key;
+            *value = object.data[*i].value;
+            return true;
+        };
+    }
+    return false;
+};
+
+// while (JObject_loop(obj,&i,&key,&value))
+// {
+//     /* code */
+// }
+
 void JfreeValue(JValue* value) {
     switch (value->type) {
         case Array:
-            for (size_t i = 0; i < value->data.array.len; i++) {
+            for (size_t i = 0; i < value->data.array.len; ++i)
                 JfreeValue(&value->data.array.data[i]);
-            }
             free(value->data.array.data);
             break;
         case String:
             free(value->data.string.data);
             break;
+        case Object:
+            size_t i = 0;
+            JString key = {0};
+            JValue field = {0};
+            while (JObject_iter(value->data.object, &i, &key, &field)) {
+                free(key.data);
+                JfreeValue(&field);
+            }
+            free(value->data.object.data);
         default:
             break;
     }
@@ -254,14 +278,14 @@ static bool stringParser(const char** in, JValue* out) {
                 char hex;
                 uint32_t code = 0;
 
-                for (size_t i = 0; i < 4; i++) {
+                for (size_t i = 0; i < 4; ++i) {
                     if (!consumeSet(in, &hex, "0123456789abcdefABCDEF"))
                         goto fail;
                     code = code * 16 + hexMap[(size_t)hex];
                 }
 
                 char chars[4];
-                for (size_t i = 0; i < utf8_encode(chars, code); i++)
+                for (size_t i = 0; i < utf8_encode(chars, code); ++i)
                     if (!JString_append(&str, chars[i])) goto fail;
             } else {
                 if (!(c = specialMap[(size_t)c])) goto fail;
@@ -282,8 +306,40 @@ fail:
     return false;
 }
 
+static bool objectParser(const char** in, JValue* out) {
+    *out = (JValue){.type = Object, .data = {.object = (JObject){0}}};
+    const char* start = *in;
+    if (!consumeLiteral(in, "{")) goto fail;
+    consumeWs(in);
+    if (consumeLiteral(in, "}")) goto pass;
+    JValue key = {0};
+    JValue value = {0};
+    if (!parseValue(in, &key) || key.type != String) goto fail;
+    if (!consumeLiteral(in, ":")) goto fail;
+    if (!parseValue(in, &value)) goto fail;
+    if (!JObject_set(&out->data.object, key.data.string, value)) goto fail;
+    while (!consumeLiteral(in, "}")) {
+        if (!consumeLiteral(in, ",")) goto fail;
+        if (!parseValue(in, &key) || key.type != String) goto fail;
+        if (!consumeLiteral(in, ":")) goto fail;
+        if (!parseValue(in, &value)) goto fail;
+        if (!JObject_set(&out->data.object, key.data.string, value)) goto fail;
+        key = (JValue){0};
+        value = (JValue){0};
+    }
+pass:
+    return true;
+fail:
+    JfreeValue(&key);
+    JfreeValue(&value);
+    JfreeValue(out);
+    *out = (JValue){0};
+    *in = start;
+    return false;
+}
+
 static valueParser valueParsers[] = {nullParser, boolParser, arrayParser,
-                                     stringParser};
+                                     stringParser, objectParser};
 
 static bool parseValue(const char** in, JValue* out) {
     *out = (JValue){0};

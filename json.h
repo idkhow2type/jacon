@@ -49,5 +49,6 @@ bool Jparse(const char* in, JValue* out);
 void JfreeValue(JValue* value);
 bool JObject_set(JObject* object, JString key, JValue value);
 JValue JObject_get(JObject object, JString key);
+bool JObject_iter(JObject object, size_t* i, JString* key, JValue* value);
 
 #endif
