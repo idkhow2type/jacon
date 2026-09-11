@@ -104,9 +104,9 @@ else
 static void consumeWs(const char** in) { for (; isWs(*in[0]); ++*in); }
 
 static bool consumeLiteral(const char** in, const char* lit) {
-    const char** start = in;
+    const char* start = *in;
     for (; lit[0] != '\0' && *in[0] == lit[0]; ++*in, ++lit);
-    in = lit[0] == '\0' ? in : start;
+    *in = lit[0] == '\0' ? *in : start;
     return lit[0] == '\0';
 }
 
@@ -140,35 +140,32 @@ static bool boolParser(const char** in, JValue* out) {
     return false;
 }
 
-// static const char* arrayParser(const char* in, JValue* out) {
-//     *out = (JValue){.type = Array,
-//                     .data.array = MAKE_ARRAY(JArray, struct JValue)};
-//     const char* next;
-//     const char* checkpoint = in;
-//     JValue curr = {0};
-//     if ((next = consumeLiteral(checkpoint, "[")) == checkpoint) goto fail;
-//     checkpoint = next = consumeWs(next);
-//     if ((next = consumeLiteral(checkpoint, "]")) != checkpoint) goto pass;
-//     if ((next = parseValue(checkpoint, &curr)) == checkpoint) goto fail;
-//     checkpoint = next;
-//     if (!JArray_append(&out->data.array, curr)) goto fail;
-//     curr = (JValue){0};
-//     while ((next = consumeLiteral(checkpoint, "]")) == checkpoint) {
-//         checkpoint = next;
-//         if ((next = consumeLiteral(checkpoint, ",")) == checkpoint) goto
-//         fail; checkpoint = next; if ((next = parseValue(checkpoint, &curr))
-//         == checkpoint) goto fail; checkpoint = next; if
-//         (!JArray_append(&out->data.array, curr)) goto fail; curr =
-//         (JValue){0};
-//     }
-// pass:
-//     return next;
-// fail:
-//     JfreeValue(&curr);
-//     JfreeValue(out);
-//     *out = (JValue){0};
-//     return in;
-// }
+static bool arrayParser(const char** in, JValue* out) {
+    *out = (JValue){.type = Array,
+                    .data.array = MAKE_ARRAY(JArray, struct JValue)};
+    const char* start = *in;
+    JValue curr = {0};
+    if (!consumeLiteral(in, "[")) goto fail;
+    consumeWs(in);
+    if (consumeLiteral(in, "]")) goto pass;
+    if (!parseValue(in, &curr)) goto fail;
+    if (!JArray_append(&out->data.array, curr)) goto fail;
+    curr = (JValue){0};
+    while (!consumeLiteral(in, "]")) {
+        if (!consumeLiteral(in, ",")) goto fail;
+        if (!parseValue(in, &curr)) goto fail;
+        if (!JArray_append(&out->data.array, curr)) goto fail;
+        curr = (JValue){0};
+    }
+pass:
+    return true;
+fail:
+    JfreeValue(&curr);
+    JfreeValue(out);
+    *out = (JValue){0};
+    *in = start;
+    return false;
+}
 
 // static const char specialMap[] = {
 //     ['"'] = '"',  ['\\'] = '\\', ['/'] = '/',  ['b'] = '\b',
@@ -256,7 +253,7 @@ static bool boolParser(const char** in, JValue* out) {
 
 // static parser valueParsers[] = {nullParser, boolParser, arrayParser,
 //                                 stringParser};
-static parser valueParsers[] = {nullParser,boolParser};
+static parser valueParsers[] = {nullParser, boolParser,arrayParser};
 
 static bool parseValue(const char** in, JValue* out) {
     *out = (JValue){0};
