@@ -79,6 +79,39 @@ static void testArrays(void) {
     JfreeValue(&value);
 }
 
+static void testObjects(void) {
+    JValue value = parse("{\"name\": \"Ada\", \"active\": true, "
+                         "\"flags\": [true, false]}");
+    CHECK(value.type == Object);
+    CHECK(value.data.object.len == 3);
+
+    JString nameKey = {.data = "name", .len = 5};
+    JString activeKey = {.data = "active", .len = 7};
+    JString flagsKey = {.data = "flags", .len = 6};
+    JValue name = JObject_get(value.data.object, nameKey);
+    JValue active = JObject_get(value.data.object, activeKey);
+    JValue flags = JObject_get(value.data.object, flagsKey);
+    CHECK(name.type == String);
+    CHECK(strcmp(name.data.string.data, "Ada") == 0);
+    CHECK(active.type == Bool);
+    CHECK(active.data.boolean);
+    CHECK(flags.type == Array);
+    CHECK(flags.data.array.len == 2);
+
+    size_t index = 0;
+    size_t iterated = 0;
+    JString key = {0};
+    JValue field = {0};
+    while (JObject_iter(value.data.object, &index, &key, &field)) iterated++;
+    CHECK(iterated == value.data.object.len);
+    JfreeValue(&value);
+
+    value = parse("{}");
+    CHECK(value.type == Object);
+    CHECK(value.data.object.len == 0);
+    JfreeValue(&value);
+}
+
 static void testInvalidInput(void) {
     expectInvalid("");
     expectInvalid("true trailing");
@@ -87,13 +120,12 @@ static void testInvalidInput(void) {
     expectInvalid("\"unterminated");
     expectInvalid("\"bad\\q\"");
     expectInvalid("\"bad\\u12\"");
+    expectInvalid("{\"key\" true}");
+    expectInvalid("{\"key\": true,}");
 }
 
 static void testHashMap(void) {
-    JObject object = {
-        .data = calloc(4, sizeof(*object.data)),
-        .cap = 4,
-    };
+    JObject object = {0};
     JString firstKey = {.data = "a", .len = 1};
     JString collisionKey = {.data = "e", .len = 1};
     JString thirdKey = {.data = "third", .len = 5};
@@ -102,7 +134,6 @@ static void testHashMap(void) {
     JValue third = {.type = Number, .data.number = 3};
     char* allocatedKeys[5] = {0};
 
-    CHECK(object.data != NULL);
     CHECK(JObject_set(&object, firstKey, first));
     CHECK(JObject_set(&object, collisionKey, collision));
     CHECK(JObject_set(&object, thirdKey, third));
@@ -141,6 +172,7 @@ int main(void) {
     testBooleans();
     testStrings();
     testArrays();
+    testObjects();
     testInvalidInput();
     testHashMap();
 

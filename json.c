@@ -75,6 +75,7 @@ static bool resize(JObject* object) {
         if (old[i].value.type != Undefined)
             JObject_set(object, old[i].key, old[i].value);
     }
+    free(old);
     return true;
 }
 
@@ -102,20 +103,17 @@ JValue JObject_get(const JObject object, JString key) {
 }
 
 bool JObject_iter(JObject object, size_t* i, JString* key, JValue* value) {
-    while ((*i)++ < object.cap) {
+    while (*i < object.cap) {
         if (object.data[*i].value.type != Undefined) {
             *key = object.data[*i].key;
             *value = object.data[*i].value;
+            ++*i;
             return true;
         };
+        ++*i;
     }
     return false;
 };
-
-// while (JObject_loop(obj,&i,&key,&value))
-// {
-//     /* code */
-// }
 
 void JfreeValue(JValue* value) {
     switch (value->type) {
@@ -136,6 +134,7 @@ void JfreeValue(JValue* value) {
                 JfreeValue(&field);
             }
             free(value->data.object.data);
+            break;
         default:
             break;
     }
