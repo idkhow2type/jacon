@@ -49,7 +49,7 @@ int main() {
     // JfreeValue(value);
     // free(value);
 
-    JObject object = {.len = 0, .cap = 4, .data = calloc(4, sizeof(ObjectField))};
+    JObject object = {0};
     JObject_set(&object, (JString){.data = "abc", .len = 4, .cap = 4},
                 (JValue){.type = Bool, .data = {.boolean = true}});
     JObject_set(&object, (JString){.data = "abc", .len = 4, .cap = 4},

@@ -33,6 +33,11 @@
 DEFINE_ARRAY(JArray, struct JValue);
 DEFINE_ARRAY(JString, char);
 
+typedef struct ObjectField {
+    JValue value;
+    JString key;
+} ObjectField;
+
 bool JString_cmp(JString a, JString b) {
     if (a.len != b.len) return false;
     for (size_t i = 0; i < a.len; ++i)
@@ -58,7 +63,7 @@ static bool resize(JObject* object) {
         return false;
     }
     struct ObjectField* old = object->data;
-    object->data = malloc(next_cap * sizeof(JObject));
+    object->data = calloc(next_cap, sizeof(*object->data));
     if (object->data == NULL) {
         object->data = old;
         return false;

@@ -2,6 +2,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static int failures;
@@ -88,12 +89,60 @@ static void testInvalidInput(void) {
     expectInvalid("\"bad\\u12\"");
 }
 
+static void testHashMap(void) {
+    JObject object = {
+        .data = calloc(4, sizeof(*object.data)),
+        .cap = 4,
+    };
+    JString firstKey = {.data = "a", .len = 1};
+    JString collisionKey = {.data = "e", .len = 1};
+    JString thirdKey = {.data = "third", .len = 5};
+    JValue first = {.type = Number, .data.number = 1};
+    JValue collision = {.type = Number, .data.number = 2};
+    JValue third = {.type = Number, .data.number = 3};
+    char* allocatedKeys[5] = {0};
+
+    CHECK(object.data != NULL);
+    CHECK(JObject_set(&object, firstKey, first));
+    CHECK(JObject_set(&object, collisionKey, collision));
+    CHECK(JObject_set(&object, thirdKey, third));
+    CHECK(object.len == 3);
+    CHECK(JObject_get(object, firstKey).data.number == 1);
+    CHECK(JObject_get(object, collisionKey).data.number == 2);
+    CHECK(JObject_get(object, thirdKey).data.number == 3);
+
+    for (size_t i = 0; i < 5; ++i) {
+        char* keyData = malloc(2);
+        CHECK(keyData != NULL);
+        if (keyData == NULL) continue;
+        allocatedKeys[i] = keyData;
+        keyData[0] = (char)('f' + i);
+        keyData[1] = '\0';
+        JString key = {.data = keyData, .len = 1};
+        JValue value = {.type = Number, .data.number = 10 + i};
+        CHECK(JObject_set(&object, key, value));
+    }
+    CHECK(object.cap > 4);
+    CHECK(object.len == 8);
+    CHECK(JObject_get(object, firstKey).data.number == 1);
+    CHECK(JObject_get(object, collisionKey).data.number == 2);
+
+    JValue replacement = {.type = Number, .data.number = 99};
+    CHECK(JObject_set(&object, firstKey, replacement));
+    CHECK(object.len == 8);
+    CHECK(JObject_get(object, firstKey).data.number == 99);
+
+    for (size_t i = 0; i < 5; ++i) free(allocatedKeys[i]);
+    free(object.data);
+}
+
 int main(void) {
     testNull();
     testBooleans();
     testStrings();
     testArrays();
     testInvalidInput();
+    testHashMap();
 
     if (failures != 0) {
         fprintf(stderr, "%d test check(s) failed\n", failures);

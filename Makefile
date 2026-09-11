@@ -8,8 +8,12 @@ main: main.o json.o
 	$(CC) $^ $(CFLAGS) -o $@
 test: test.o json.o
 	$(CC) $^ $(CFLAGS) -lm -o $@
+hashmap_perf: hashmap_perf.o json.o
+	$(CC) $^ $(CFLAGS) -o $@
+perf-test: hashmap_perf
+
 
 clean:
-	rm -f  main test *.o
+	rm -f  main test hashmap_perf *.o
 
-.PHONY: all test clean
+.PHONY: all test perf-test clean
