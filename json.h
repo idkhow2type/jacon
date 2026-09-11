@@ -14,8 +14,15 @@
     bool Name##_append(Name* array, T value);
 
 DECLARE_ARRAY(JArray, struct JValue);
-// is null terminated, but null can appear mid buffer
+// strings are utf8 encoded, might support byo encoder later
+// string data is null terminated, but null can appear mid buffer
 DECLARE_ARRAY(JString, char);
+
+typedef struct JObject {
+    struct JValue *data;
+    size_t len;
+    size_t cap;
+} JObject;
 
 typedef struct JValue {
     enum {
@@ -32,10 +39,11 @@ typedef struct JValue {
         double number;
         JArray array;
         JString string;
+        JObject object;
     } data;
 } JValue;
 
-const char* Jparse(const char* in, JValue* out);
+bool Jparse(const char* in, JValue* out);
 void JfreeValue(JValue* value);
 
 #endif

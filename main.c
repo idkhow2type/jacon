@@ -36,13 +36,12 @@ void printValue(const JValue* value) {
 int main() {
     JValue* value = calloc(1, sizeof(JValue));
     // char in[] = {'t', 'r', 'u', 'e'};
-    char in[] = "\"hello";
-    const char* new = Jparse(in, value);
-    if (in == new) {
-        printf("err\n");
-    } else {
+    char in[] = "false";
+    if (Jparse(in, value)) {
         printValue(value);
         printf("\n");
+    } else {
+        printf("err\n");
     }
     JfreeValue(value);
     free(value);
