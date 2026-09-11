@@ -51,11 +51,6 @@ static uint64_t hash(const char* s, size_t len) {
     return hash;
 }
 
-typedef struct ObjectField {
-    JValue value;
-    JString key;
-} ObjectField;
-
 static bool resize(JObject* object) {
     size_t next_cap = object->cap == 0 ? DEFAULT_CAP : object->cap * 2;
     if (next_cap < object->cap ||
@@ -68,7 +63,10 @@ static bool resize(JObject* object) {
         object->data = old;
         return false;
     }
-    for (size_t i = 0; i < object->cap; i++) {
+    size_t old_cap = object->cap;
+    object->cap = next_cap;
+    object->len = 0;
+    for (size_t i = 0; i < old_cap; i++) {
         if (old[i].value.type != Undefined)
             JObject_set(object, old[i].key, old[i].value);
     }
@@ -79,17 +77,20 @@ bool JObject_set(JObject* object, JString key, JValue value) {
     if (object->len >= object->cap - object->cap / 4)
         if (!resize(object)) return false;
 
-    size_t h = hash(key.data, key.len) % object->cap;
-    for (size_t i = 0; object->data[h].value.type != Undefined; i++)
+    size_t h = (hash(key.data, key.len) & (object->cap - 1));
+    bool override = false;
+    for (size_t i = 0; object->data[h].value.type != Undefined &&
+                       !(override = JString_cmp(object->data[h].key, key));
+         i++)
         h = (h + (i + i * i) / 2) % object->cap;
 
     object->data[h] = (struct ObjectField){.value = value, .key = key};
-    object->len += 1;
+    object->len += !override;
     return true;
 }
 
 JValue JObject_get(const JObject object, JString key) {
-    size_t h = hash(key.data, key.len) % object.cap;
+    size_t h = (hash(key.data, key.len) & (object.cap - 1));
     for (size_t i = 0; !JString_cmp(object.data[h].key, key); i++)
         h = (h + (i + i * i) / 2) % object.cap;
     return object.data[h].value;

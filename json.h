@@ -45,6 +45,11 @@ typedef struct JValue {
     } data;
 } JValue;
 
+typedef struct ObjectField {
+    JValue value;
+    JString key;
+} ObjectField;
+
 bool Jparse(const char* in, JValue* out);
 void JfreeValue(JValue* value);
 bool JObject_set(JObject* object, JString key, JValue value);
