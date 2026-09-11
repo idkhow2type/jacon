@@ -6,8 +6,10 @@ all: main
 	$(CC) $< -c $(CFLAGS) -o $@
 main: main.o json.o
 	$(CC) $^ $(CFLAGS) -o $@
+test: test.o json.o
+	$(CC) $^ $(CFLAGS) -lm -o $@
 
 clean:
-	rm -f  main *.o
+	rm -f  main test *.o
 
-.PHONY: all clean
+.PHONY: all test clean

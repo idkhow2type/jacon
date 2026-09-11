@@ -33,6 +33,68 @@
 DEFINE_ARRAY(JArray, struct JValue);
 DEFINE_ARRAY(JString, char);
 
+bool JString_cmp(JString a, JString b) {
+    if (a.len != b.len) return false;
+    for (size_t i = 0; i < a.len; ++i)
+        if (a.data[i] != b.data[i]) return false;
+    return true;
+}
+
+static uint64_t hash(const char* s, size_t len) {
+    uint64_t hash = 14695981039346656037ULL;
+
+    for (size_t i = 0; i < len; i++) {
+        hash ^= (uint8_t)*s++;
+        hash *= 1099511628211ULL;
+    }
+
+    return hash;
+}
+
+typedef struct ObjectField {
+    JValue value;
+    JString key;
+} ObjectField;
+
+static bool resize(JObject* object) {
+    size_t next_cap = object->cap == 0 ? DEFAULT_CAP : object->cap * 2;
+    if (next_cap < object->cap ||
+        next_cap > (size_t)-1 / sizeof(*object->data)) {
+        return false;
+    }
+    struct ObjectField* old = object->data;
+    object->data = malloc(next_cap * sizeof(JObject));
+    if (object->data == NULL) {
+        object->data = old;
+        return false;
+    }
+    for (size_t i = 0; i < object->cap; i++) {
+        if (old[i].value.type != Undefined)
+            JObject_set(object, old[i].key, old[i].value);
+    }
+    return true;
+}
+
+bool JObject_set(JObject* object, JString key, JValue value) {
+    if (object->len >= object->cap - object->cap / 4)
+        if (!resize(object)) return false;
+
+    size_t h = hash(key.data, key.len) % object->cap;
+    for (size_t i = 0; object->data[h].value.type != Undefined; i++)
+        h = (h + (i + i * i) / 2) % object->cap;
+
+    object->data[h] = (struct ObjectField){.value = value, .key = key};
+    object->len += 1;
+    return true;
+}
+
+JValue JObject_get(const JObject object, JString key) {
+    size_t h = hash(key.data, key.len) % object.cap;
+    for (size_t i = 0; !JString_cmp(object.data[h].key, key); i++)
+        h = (h + (i + i * i) / 2) % object.cap;
+    return object.data[h].value;
+}
+
 void JfreeValue(JValue* value) {
     switch (value->type) {
         case Array:
@@ -183,7 +245,6 @@ static bool stringParser(const char** in, JValue* out) {
         if (c == '\\') {
             c = (*in)++[0];
             if (c == 'u') {
-                --*in;
                 char hex;
                 uint32_t code = 0;
 
@@ -195,14 +256,14 @@ static bool stringParser(const char** in, JValue* out) {
 
                 char chars[4];
                 for (size_t i = 0; i < utf8_encode(chars, code); i++)
-                    JString_append(&str, chars[i]);
+                    if (!JString_append(&str, chars[i])) goto fail;
             } else {
                 if (!(c = specialMap[(size_t)c])) goto fail;
-                JString_append(&str, c);
+                if (!JString_append(&str, c)) goto fail;
             }
         } else {
             if (c == '\0') goto fail;
-            JString_append(&str, c);
+            if (!JString_append(&str, c)) goto fail;
         }
     }
     JString_append(&str, '\0');

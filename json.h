@@ -18,8 +18,10 @@ DECLARE_ARRAY(JArray, struct JValue);
 // string data is null terminated, but null can appear mid buffer
 DECLARE_ARRAY(JString, char);
 
+typedef struct ObjectField ObjectField;
+
 typedef struct JObject {
-    struct JValue *data;
+    ObjectField* data;
     size_t len;
     size_t cap;
 } JObject;
@@ -45,5 +47,7 @@ typedef struct JValue {
 
 bool Jparse(const char* in, JValue* out);
 void JfreeValue(JValue* value);
+bool JObject_set(JObject* object, JString key, JValue value);
+JValue JObject_get(JObject object, JString key);
 
 #endif

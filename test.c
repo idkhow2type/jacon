@@ -17,15 +17,13 @@ static int failures;
 
 static JValue parse(const char* input) {
     JValue value = {0};
-    const char* next = Jparse(input, &value);
-    CHECK(next != input);
+    CHECK(Jparse(input, &value));
     return value;
 }
 
 static void expectInvalid(const char* input) {
     JValue value = {.type = String};
-    const char* next = Jparse(input, &value);
-    CHECK(next == input);
+    CHECK(!Jparse(input, &value));
     CHECK(value.type == Undefined);
 }
 
