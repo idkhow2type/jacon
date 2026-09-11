@@ -51,57 +51,51 @@ void JfreeValue(JValue* value) {
 }
 
 // https://gist.github.com/MightyPork/52eda3e5677b4b03524e40c9f0ab1da5
-// static size_t utf8_encode(char* out, uint32_t utf) {
-//     if (utf <= 0x7F) {
-//         // Plain ASCII
-//         out[0] = (char)utf;
-//         out[1] = 0;
-//         return 1;
-//     } else if (utf <= 0x07FF) {
-//         // 2-byte unicode
-//         out[0] = (char)(((utf >> 6) & 0x1F) | 0xC0);
-//         out[1] = (char)(((utf >> 0) & 0x3F) | 0x80);
-//         out[2] = 0;
-//         return 2;
-//     } else if (utf <= 0xFFFF) {
-//         // 3-byte unicode
-//         out[0] = (char)(((utf >> 12) & 0x0F) | 0xE0);
-//         out[1] = (char)(((utf >> 6) & 0x3F) | 0x80);
-//         out[2] = (char)(((utf >> 0) & 0x3F) | 0x80);
-//         out[3] = 0;
-//         return 3;
-//     } else if (utf <= 0x10FFFF) {
-//         // 4-byte unicode
-//         out[0] = (char)(((utf >> 18) & 0x07) | 0xF0);
-//         out[1] = (char)(((utf >> 12) & 0x3F) | 0x80);
-//         out[2] = (char)(((utf >> 6) & 0x3F) | 0x80);
-//         out[3] = (char)(((utf >> 0) & 0x3F) | 0x80);
-//         out[4] = 0;
-//         return 4;
-//     } else {
-//         // error - use replacement character
-//         out[0] = (char)0xEF;
-//         out[1] = (char)0xBF;
-//         out[2] = (char)0xBD;
-//         out[3] = 0;
-//         return 0;
-//     }
-// }
+static size_t utf8_encode(char* out, uint32_t utf) {
+    if (utf <= 0x7F) {
+        // Plain ASCII
+        out[0] = (char)utf;
+        out[1] = 0;
+        return 1;
+    } else if (utf <= 0x07FF) {
+        // 2-byte unicode
+        out[0] = (char)(((utf >> 6) & 0x1F) | 0xC0);
+        out[1] = (char)(((utf >> 0) & 0x3F) | 0x80);
+        out[2] = 0;
+        return 2;
+    } else if (utf <= 0xFFFF) {
+        // 3-byte unicode
+        out[0] = (char)(((utf >> 12) & 0x0F) | 0xE0);
+        out[1] = (char)(((utf >> 6) & 0x3F) | 0x80);
+        out[2] = (char)(((utf >> 0) & 0x3F) | 0x80);
+        out[3] = 0;
+        return 3;
+    } else if (utf <= 0x10FFFF) {
+        // 4-byte unicode
+        out[0] = (char)(((utf >> 18) & 0x07) | 0xF0);
+        out[1] = (char)(((utf >> 12) & 0x3F) | 0x80);
+        out[2] = (char)(((utf >> 6) & 0x3F) | 0x80);
+        out[3] = (char)(((utf >> 0) & 0x3F) | 0x80);
+        out[4] = 0;
+        return 4;
+    } else {
+        // error - use replacement character
+        out[0] = (char)0xEF;
+        out[1] = (char)0xBF;
+        out[2] = (char)0xBD;
+        out[3] = 0;
+        return 0;
+    }
+}
 
 static bool isWs(char c) { return c != '\0' && strchr(" \n\r\t", c) != NULL; }
 
-/* Define an abstract parser as
-const char* parser(const char* in, void* out?, ...);
-parsers take in a string and try to perform its parse logic
-if success
-    parsed value set to out if available
-    returns new string with parsed prefix removed
-else
-    out set to undefined state (depending on type)
-    returns in unchanged
-*/
+// typedef bool (*parser)(const char** in);
 
-static void consumeWs(const char** in) { for (; isWs(*in[0]); ++*in); }
+static bool consumeWs(const char** in) {
+    for (; isWs(*in[0]); ++*in);
+    return true;
+}
 
 static bool consumeLiteral(const char** in, const char* lit) {
     const char* start = *in;
@@ -110,12 +104,12 @@ static bool consumeLiteral(const char** in, const char* lit) {
     return lit[0] == '\0';
 }
 
-// static const char* consumeSet(const char* in, char* out, const char* set) {
-//     return in[0] != '\0' && strchr(set, in[0]) != NULL ? (*out = in[0], ++in)
-//                                                        : in;
-// }
+static bool consumeSet(const char** in, char* out, const char* set) {
+    return *in[0] != '\0' && strchr(set, *in[0]) != NULL &&
+           (*out = *in[0], ++*in, true);
+}
 
-typedef bool (*parser)(const char** in, JValue* out);
+typedef bool (*valueParser)(const char** in, JValue* out);
 static bool parseValue(const char** in, JValue* out);
 
 static bool nullParser(const char** in, JValue* out) {
@@ -167,100 +161,69 @@ fail:
     return false;
 }
 
-// static const char specialMap[] = {
-//     ['"'] = '"',  ['\\'] = '\\', ['/'] = '/',  ['b'] = '\b',
-//     ['f'] = '\f', ['n'] = '\n',  ['r'] = '\r', ['t'] = '\t',
-// };
-// static const char hexMap[] = {
-//     ['0'] = 0,  ['1'] = 1,  ['2'] = 2,  ['3'] = 3,  ['4'] = 4,  ['5'] = 5,
-//     ['6'] = 6,  ['7'] = 7,  ['8'] = 8,  ['9'] = 9,  ['a'] = 10, ['b'] = 11,
-//     ['c'] = 12, ['d'] = 13, ['e'] = 14, ['f'] = 15, ['A'] = 10, ['B'] = 11,
-//     ['C'] = 12, ['D'] = 13, ['E'] = 14, ['F'] = 15,
-// };
+static const char specialMap[] = {
+    ['"'] = '"',  ['\\'] = '\\', ['/'] = '/',  ['b'] = '\b',
+    ['f'] = '\f', ['n'] = '\n',  ['r'] = '\r', ['t'] = '\t',
+};
+static const char hexMap[] = {
+    ['0'] = 0,  ['1'] = 1,  ['2'] = 2,  ['3'] = 3,  ['4'] = 4,  ['5'] = 5,
+    ['6'] = 6,  ['7'] = 7,  ['8'] = 8,  ['9'] = 9,  ['a'] = 10, ['b'] = 11,
+    ['c'] = 12, ['d'] = 13, ['e'] = 14, ['f'] = 15, ['A'] = 10, ['B'] = 11,
+    ['C'] = 12, ['D'] = 13, ['E'] = 14, ['F'] = 15,
+};
 
-// static const char* stringParser(const char* in, JValue* out) {
-//     JString str = MAKE_ARRAY(JString, char);
-//     const char* next;
-//     const char* checkpoint = in;
-//     if ((next = consumeLiteral(checkpoint, "\"")) == checkpoint) goto fail;
-//     checkpoint = next;
-//     char flag = 0;
+static bool stringParser(const char** in, JValue* out) {
+    JString str = MAKE_ARRAY(JString, char);
+    const char* start = *in;
+    if (!consumeLiteral(in, "\"")) goto fail;
+    char flag = 0;
 
-//     // and they say that state machines are good smh
-//     while (flag ||
-//            (!flag && (next = consumeLiteral(checkpoint, "\"")) ==
-//            checkpoint)) {
-//         checkpoint = next;
-//         char c = next[0];
-//         checkpoint = ++next;
-//         switch (flag) {
-//             case 'u':
-//                 // this is kinda hacky
-//                 checkpoint = --next;
+    while (flag || (!flag && !consumeLiteral(in, "\""))) {
+        char c = (*in)++[0];  // this is abuse
+        if (c == '\\') {
+            c = (*in)++[0];
+            if (c == 'u') {
+                --*in;
+                char hex;
+                uint32_t code = 0;
 
-//                 char hex;
-//                 uint32_t code = 0;
+                for (size_t i = 0; i < 4; i++) {
+                    if (!consumeSet(in, &hex, "0123456789abcdefABCDEF"))
+                        goto fail;
+                    code = code * 16 + hexMap[(size_t)hex];
+                }
 
-//                 for (size_t i = 0; i < 4; i++) {
-//                     if ((next = consumeSet(next, &hex,
-//                                            "0123456789abcdefABCDEF")) ==
-//                         checkpoint)
-//                         goto fail;
-//                     checkpoint = next;
-//                     code *= 16;
-//                     code += hexMap[(size_t)hex];
-//                 }
+                char chars[4];
+                for (size_t i = 0; i < utf8_encode(chars, code); i++)
+                    JString_append(&str, chars[i]);
+            } else {
+                if (!(c = specialMap[(size_t)c])) goto fail;
+                JString_append(&str, c);
+            }
+        } else {
+            if (c == '\0') goto fail;
+            JString_append(&str, c);
+        }
+    }
+    JString_append(&str, '\0');
+    *out = (JValue){.type = String, .data = {.string = str}};
+    return true;
+fail:
+    *out = (JValue){0};
+    free(str.data);
+    *in = start;
+    return false;
+}
 
-//                 char chars[4];
-//                 for (size_t i = 0; i < utf8_encode(chars, code); i++) {
-//                     JString_append(&str, chars[i]);
-//                 }
-
-//                 flag = 0;
-//                 break;
-//             case '\\':
-//                 if (c == 'u') {
-//                     flag = 'u';
-//                     continue;
-//                 }
-//                 c = specialMap[(size_t)c];
-//                 if (!c) goto fail;
-//                 JString_append(&str, c);
-//                 flag = 0;
-//                 break;
-//             default:
-//                 switch (c) {
-//                     case '\\':
-//                         flag = c;
-//                         break;
-//                     case '\0':
-//                         goto fail;
-//                     default:
-//                         JString_append(&str, c);
-//                         break;
-//                 }
-//                 break;
-//         }
-//     }
-//     JString_append(&str, '\0');
-//     *out = (JValue){.type = String, .data = {.string = str}};
-//     return next;
-// fail:
-//     *out = (JValue){0};
-//     free(str.data);
-//     return in;
-// }
-
-// static parser valueParsers[] = {nullParser, boolParser, arrayParser,
-//                                 stringParser};
-static parser valueParsers[] = {nullParser, boolParser,arrayParser};
+static valueParser valueParsers[] = {nullParser, boolParser, arrayParser,
+                                     stringParser};
 
 static bool parseValue(const char** in, JValue* out) {
     *out = (JValue){0};
     const char* next = *in;
     consumeWs(&next);
-    for (size_t i = 0;
-         out->type == Undefined && i < sizeof(valueParsers) / sizeof(parser);
+    for (size_t i = 0; out->type == Undefined &&
+                       i < sizeof(valueParsers) / sizeof(valueParser);
          ++i) {
         if (valueParsers[i](&next, out)) {
             consumeWs(&next);

@@ -36,7 +36,7 @@ void printValue(const JValue* value) {
 int main() {
     JValue* value = calloc(1, sizeof(JValue));
     // char in[] = {'t', 'r', 'u', 'e'};
-    char in[] = "[true,false,null,[true,[true]]]";
+    char in[] = "\"hello\"";
     if (Jparse(in, value)) {
         printValue(value);
         printf("\n");
