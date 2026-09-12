@@ -1,12 +1,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "json.h"
 
 int main() {
-    JValue value = {.type = Object};
+    jacValue value = {.type = JAC_TYPE_OBJECT};
     // char in[] = {'t', 'r', 'u', 'e'};
     // char in[] = "{\"abc\":true,\"123\":false}";
     // if (Jparse(in, &value)) {
@@ -17,12 +16,17 @@ int main() {
     // }
     // JObject_setcstr(&value.data.object, "hello",
     //                 );
-    JObject_setcstr2(&value.data.object, "ggethrytu", NULL);
-    JObject_setcstr2(&value.data.object, "blah", "abc");
-    char* encoded = Jencode(value).data;
-    printf("%s\n",encoded);
+
+    // jacObject_setval(&value.data.object, "abc", value);
+    // jacObject_setjs(&value.data.object,
+    //               ((jacString){.data = "123", .len = 3, .cap = 0}), 1);
+    jacObject_set(&value.data.object, "ggethrytu", NULL);
+    jacObject_set(&value.data.object, "blah", "abc");
+    char* encoded = jac_encode(value).data;
+    printf("%s\n", encoded);
     free(encoded);
-    JfreeValue(&value);
+    jac_freeValue(&value);
+
     // free(value);
 
     // JObject object = {0};

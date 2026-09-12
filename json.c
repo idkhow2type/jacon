@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -30,15 +29,15 @@
         return true;                                                          \
     };
 
-DEFINE_ARRAY(JArray, struct JValue);
-DEFINE_ARRAY(JString, char);
+DEFINE_ARRAY(jacArray, struct jacValue);
+DEFINE_ARRAY(jacString, char);
 
 typedef struct ObjectField {
-    JValue value;
-    JString key;
+    jacValue value;
+    jacString key;
 } ObjectField;
 
-bool JString_cmp(JString a, JString b) {
+bool JString_cmp(jacString a, jacString b) {
     if (a.len != b.len) return false;
     for (size_t i = 0; i < a.len; ++i)
         if (a.data[i] != b.data[i]) return false;
@@ -56,7 +55,7 @@ static uint64_t hash(const char* s, size_t len) {
     return hash;
 }
 
-static bool resize(JObject* object) {
+static bool resize(jacObject* object) {
     size_t next_cap = object->cap == 0 ? DEFAULT_CAP : object->cap * 2;
     if (next_cap < object->cap ||
         next_cap > (size_t)-1 / sizeof(*object->data)) {
@@ -72,20 +71,20 @@ static bool resize(JObject* object) {
     object->cap = next_cap;
     object->len = 0;
     for (size_t i = 0; i < old_cap; ++i) {
-        if (old[i].value.type != Undefined)
-            JObject_set(object, old[i].key, old[i].value);
+        if (old[i].value.type != JAC_TYPE_UNDEFINED)
+            jacObject_setjsval(object, old[i].key, old[i].value);
     }
     free(old);
     return true;
 }
 
-bool JObject_set(JObject* object, const JString key, const JValue value) {
+bool jacObject_setjsval(jacObject* object, const jacString key, const jacValue value) {
     if (object->len >= object->cap - object->cap / 4)
         if (!resize(object)) return false;
 
     size_t h = (hash(key.data, key.len) & (object->cap - 1));
     bool override = false;
-    for (size_t i = 0; object->data[h].value.type != Undefined &&
+    for (size_t i = 0; object->data[h].value.type != JAC_TYPE_UNDEFINED &&
                        !(override = JString_cmp(object->data[h].key, key));
          ++i)
         h = (h + (i + i * i) / 2) % object->cap;
@@ -95,17 +94,17 @@ bool JObject_set(JObject* object, const JString key, const JValue value) {
     return true;
 }
 
-JValue JObject_get(const JObject object, const JString key) {
+jacValue jacObject_get(const jacObject object, const jacString key) {
     size_t h = (hash(key.data, key.len) & (object.cap - 1));
     for (size_t i = 0; !JString_cmp(object.data[h].key, key); ++i)
         h = (h + (i + i * i) / 2) % object.cap;
     return object.data[h].value;
 }
 
-bool JObject_iter(const JObject object, size_t* i, JString* key,
-                  JValue* value) {
+bool jacObject_iter(const jacObject object, size_t* i, jacString* key,
+                  jacValue* value) {
     while (*i < object.cap) {
-        if (object.data[*i].value.type != Undefined) {
+        if (object.data[*i].value.type != JAC_TYPE_UNDEFINED) {
             *key = object.data[*i].key;
             *value = object.data[*i].value;
             ++*i;
@@ -116,30 +115,30 @@ bool JObject_iter(const JObject object, size_t* i, JString* key,
     return false;
 };
 
-void JfreeValue(JValue* value) {
+void jac_freeValue(jacValue* value) {
     switch (value->type) {
-        case Array:
+        case JAC_TYPE_ARRAY:
             for (size_t i = 0; i < value->data.array.len; ++i)
-                JfreeValue(&value->data.array.data[i]);
+                jac_freeValue(&value->data.array.data[i]);
             if (value->data.array.cap) free(value->data.array.data);
             break;
-        case String:
+        case JAC_TYPE_STRING:
             if (value->data.string.cap) free(value->data.string.data);
             break;
-        case Object:
+        case JAC_TYPE_OBJECT:
             size_t i = 0;
-            JString key = {0};
-            JValue field = {0};
-            while (JObject_iter(value->data.object, &i, &key, &field)) {
+            jacString key = {0};
+            jacValue field = {0};
+            while (jacObject_iter(value->data.object, &i, &key, &field)) {
                 if (key.cap) free(key.data);
-                JfreeValue(&field);
+                jac_freeValue(&field);
             }
             free(value->data.object.data);
             break;
         default:
             break;
     }
-    *value = (JValue){0};
+    *value = (jacValue){0};
 }
 
 // https://gist.github.com/MightyPork/52eda3e5677b4b03524e40c9f0ab1da5
@@ -201,19 +200,19 @@ static bool consumeSet(const char** in, char* out, const char* set) {
            (*out = *in[0], ++*in, true);
 }
 
-typedef bool (*valueParser)(const char** in, JValue* out);
-static bool parseValue(const char** in, JValue* out);
+typedef bool (*valueParser)(const char** in, jacValue* out);
+static bool parseValue(const char** in, jacValue* out);
 
-static bool nullParser(const char** in, JValue* out) {
+static bool nullParser(const char** in, jacValue* out) {
     if (consumeLiteral(in, "null")) {
-        out->type = Null;
+        out->type = JAC_TYPE_NULL;
         return true;
     }
     return false;
 }
 
-static bool boolParser(const char** in, JValue* out) {
-    out->type = Bool;
+static bool boolParser(const char** in, jacValue* out) {
+    out->type = JAC_TYPE_BOOL;
     if (consumeLiteral(in, "true")) {
         out->data.boolean = true;
         return true;
@@ -222,33 +221,33 @@ static bool boolParser(const char** in, JValue* out) {
         out->data.boolean = false;
         return true;
     }
-    out->type = Undefined;
+    out->type = JAC_TYPE_UNDEFINED;
     return false;
 }
 
-static bool arrayParser(const char** in, JValue* out) {
-    *out = (JValue){.type = Array,
-                    .data.array = MAKE_ARRAY(JArray, struct JValue)};
+static bool arrayParser(const char** in, jacValue* out) {
+    *out = (jacValue){.type = JAC_TYPE_ARRAY,
+                    .data.array = MAKE_ARRAY(jacArray, struct jacValue)};
     const char* start = *in;
-    JValue curr = {0};
+    jacValue curr = {0};
     if (!consumeLiteral(in, "[")) goto fail;
     consumeWs(in);
     if (consumeLiteral(in, "]")) goto pass;
     if (!parseValue(in, &curr)) goto fail;
-    if (!JArray_append(&out->data.array, curr)) goto fail;
-    curr = (JValue){0};
+    if (!jacArray_append(&out->data.array, curr)) goto fail;
+    curr = (jacValue){0};
     while (!consumeLiteral(in, "]")) {
         if (!consumeLiteral(in, ",")) goto fail;
         if (!parseValue(in, &curr)) goto fail;
-        if (!JArray_append(&out->data.array, curr)) goto fail;
-        curr = (JValue){0};
+        if (!jacArray_append(&out->data.array, curr)) goto fail;
+        curr = (jacValue){0};
     }
 pass:
     return true;
 fail:
-    JfreeValue(&curr);
-    JfreeValue(out);
-    *out = (JValue){0};
+    jac_freeValue(&curr);
+    jac_freeValue(out);
+    *out = (jacValue){0};
     *in = start;
     return false;
 }
@@ -264,8 +263,8 @@ static const char hexMap[] = {
     ['C'] = 12, ['D'] = 13, ['E'] = 14, ['F'] = 15,
 };
 
-static bool stringParser(const char** in, JValue* out) {
-    JString str = MAKE_ARRAY(JString, char);
+static bool stringParser(const char** in, jacValue* out) {
+    jacString str = MAKE_ARRAY(jacString, char);
     const char* start = *in;
     if (!consumeLiteral(in, "\"")) goto fail;
     char flag = 0;
@@ -286,54 +285,54 @@ static bool stringParser(const char** in, JValue* out) {
 
                 char chars[4];
                 for (size_t i = 0; i < utf8_encode(chars, code); ++i)
-                    if (!JString_append(&str, chars[i])) goto fail;
+                    if (!jacString_append(&str, chars[i])) goto fail;
             } else {
                 if (!(c = specialMap[(size_t)c])) goto fail;
-                if (!JString_append(&str, c)) goto fail;
+                if (!jacString_append(&str, c)) goto fail;
             }
         } else {
             if (c == '\0') goto fail;
-            if (!JString_append(&str, c)) goto fail;
+            if (!jacString_append(&str, c)) goto fail;
         }
     }
-    JString_append(&str, '\0');
-    *out = (JValue){.type = String, .data = {.string = str}};
+    jacString_append(&str, '\0');
+    *out = (jacValue){.type = JAC_TYPE_STRING, .data = {.string = str}};
     return true;
 fail:
-    *out = (JValue){0};
+    *out = (jacValue){0};
     free(str.data);
     *in = start;
     return false;
 }
 
-static bool objectParser(const char** in, JValue* out) {
-    *out = (JValue){.type = Object, .data = {.object = (JObject){0}}};
+static bool objectParser(const char** in, jacValue* out) {
+    *out = (jacValue){.type = JAC_TYPE_OBJECT, .data = {.object = (jacObject){0}}};
     const char* start = *in;
     if (!consumeLiteral(in, "{")) goto fail;
     consumeWs(in);
     if (consumeLiteral(in, "}")) goto pass;
-    JValue key = {0};
-    JValue value = {0};
-    if (!parseValue(in, &key) || key.type != String) goto fail;
+    jacValue key = {0};
+    jacValue value = {0};
+    if (!parseValue(in, &key) || key.type != JAC_TYPE_STRING) goto fail;
     if (!consumeLiteral(in, ":")) goto fail;
     if (!parseValue(in, &value)) goto fail;
-    if (!JObject_set(&out->data.object, key.data.string, value)) goto fail;
+    if (!jacObject_setjsval(&out->data.object, key.data.string, value)) goto fail;
     while (!consumeLiteral(in, "}")) {
         if (!consumeLiteral(in, ",")) goto fail;
-        if (!parseValue(in, &key) || key.type != String) goto fail;
+        if (!parseValue(in, &key) || key.type != JAC_TYPE_STRING) goto fail;
         if (!consumeLiteral(in, ":")) goto fail;
         if (!parseValue(in, &value)) goto fail;
-        if (!JObject_set(&out->data.object, key.data.string, value)) goto fail;
-        key = (JValue){0};
-        value = (JValue){0};
+        if (!jacObject_setjsval(&out->data.object, key.data.string, value)) goto fail;
+        key = (jacValue){0};
+        value = (jacValue){0};
     }
 pass:
     return true;
 fail:
-    JfreeValue(&key);
-    JfreeValue(&value);
-    JfreeValue(out);
-    *out = (JValue){0};
+    jac_freeValue(&key);
+    jac_freeValue(&value);
+    jac_freeValue(out);
+    *out = (jacValue){0};
     *in = start;
     return false;
 }
@@ -341,11 +340,11 @@ fail:
 static valueParser valueParsers[] = {nullParser, boolParser, arrayParser,
                                      stringParser, objectParser};
 
-static bool parseValue(const char** in, JValue* out) {
-    *out = (JValue){0};
+static bool parseValue(const char** in, jacValue* out) {
+    *out = (jacValue){0};
     const char* next = *in;
     consumeWs(&next);
-    for (size_t i = 0; out->type == Undefined &&
+    for (size_t i = 0; out->type == JAC_TYPE_UNDEFINED &&
                        i < sizeof(valueParsers) / sizeof(valueParser);
          ++i) {
         if (valueParsers[i](&next, out)) {
@@ -357,66 +356,66 @@ static bool parseValue(const char** in, JValue* out) {
     return false;
 }
 
-bool Jparse(const char* in, JValue* out) {
+bool jac_parse(const char* in, jacValue* out) {
     if (!parseValue(&in, out) || in[0] != '\0') {
-        *out = (JValue){0};
+        *out = (jacValue){0};
         return false;
     }
     return true;
 }
 
-JString Jencode(JValue value) {
-    JString out = MAKE_ARRAY(JString, char);
+jacString jac_encode(jacValue value) {
+    jacString out = MAKE_ARRAY(jacString, char);
     switch (value.type) {
-        case Null: {
+        case JAC_TYPE_NULL: {
             char text[] = "null";
-            for (size_t i = 0; text[i]; i++) JString_append(&out, text[i]);
+            for (size_t i = 0; text[i]; i++) jacString_append(&out, text[i]);
         } break;
-        case Bool: {
+        case JAC_TYPE_BOOL: {
             char* text = value.data.boolean ? "true" : "false";
-            for (size_t i = 0; text[i]; i++) JString_append(&out, text[i]);
+            for (size_t i = 0; text[i]; i++) jacString_append(&out, text[i]);
         } break;
-        case Array:
-            JString_append(&out, '[');
+        case JAC_TYPE_ARRAY:
+            jacString_append(&out, '[');
             for (size_t i = 0; i < value.data.array.len; ++i) {
-                JString child = Jencode(value.data.array.data[i]);
+                jacString child = jac_encode(value.data.array.data[i]);
                 for (size_t j = 0; j < child.len; ++j)
-                    JString_append(&out, child.data[j]);
-                if (i + 1 < value.data.array.len) JString_append(&out, ',');
+                    jacString_append(&out, child.data[j]);
+                if (i + 1 < value.data.array.len) jacString_append(&out, ',');
                 free(child.data);
             }
-            JString_append(&out, ']');
+            jacString_append(&out, ']');
             break;
-        case String:
-            JString_append(&out, '"');
+        case JAC_TYPE_STRING:
+            jacString_append(&out, '"');
             for (size_t i = 0; i < value.data.string.len; ++i)
-                JString_append(&out, value.data.string.data[i]);
-            JString_append(&out, '"');
+                jacString_append(&out, value.data.string.data[i]);
+            jacString_append(&out, '"');
             break;
-        case Number:
+        case JAC_TYPE_NUMBER:
             // TODO
             break;
-        case Object:
-            JString_append(&out, '{');
+        case JAC_TYPE_OBJECT:
+            jacString_append(&out, '{');
             size_t i = 0;
-            JString key = {0};
-            JValue field = {0};
+            jacString key = {0};
+            jacValue field = {0};
             for (size_t j = 0;
                  j < value.data.object.len &&
-                 JObject_iter(value.data.object, &i, &key, &field);
+                 jacObject_iter(value.data.object, &i, &key, &field);
                  ++j) {
-                JString_append(&out, '"');
+                jacString_append(&out, '"');
                 for (size_t k = 0; k < key.len; ++k)
-                    JString_append(&out, key.data[k]);
-                JString_append(&out, '"');
-                JString_append(&out, ':');
-                JString child = Jencode(field);
+                    jacString_append(&out, key.data[k]);
+                jacString_append(&out, '"');
+                jacString_append(&out, ':');
+                jacString child = jac_encode(field);
                 for (size_t k = 0; k < child.len; ++k)
-                    JString_append(&out, child.data[k]);
+                    jacString_append(&out, child.data[k]);
                 free(child.data);
-                if (j + 1 < value.data.object.len) JString_append(&out, ',');
+                if (j + 1 < value.data.object.len) jacString_append(&out, ',');
             }
-            JString_append(&out, '}');
+            jacString_append(&out, '}');
         default:
             break;
     }

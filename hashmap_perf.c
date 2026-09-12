@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    JString* keys = calloc(count, sizeof(*keys));
+    jacString* keys = calloc(count, sizeof(*keys));
     char (*keyData)[32] = calloc(count, sizeof(*keyData));
     if (keys == NULL || keyData == NULL) {
         fprintf(stderr, "could not allocate benchmark data\n");
@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    JObject object = {0};
+    jacObject object = {0};
     struct timespec start;
     struct timespec end;
     if (clock_gettime(CLOCK_MONOTONIC, &start) != 0) {
@@ -53,9 +53,9 @@ int main(int argc, char** argv) {
             fprintf(stderr, "key formatting failed\n");
             return EXIT_FAILURE;
         }
-        keys[i] = (JString){.data = keyData[i], .len = (size_t)length};
-        JValue value = {.type = Number, .data.number = (double)i};
-        if (!JObject_set(&object, keys[i], value)) {
+        keys[i] = (jacString){.data = keyData[i], .len = (size_t)length};
+        jacValue value = {.type = JAC_TYPE_NUMBER, .data.number = (double)i};
+        if (!jacObject_setjsval(&object, keys[i], value)) {
             fprintf(stderr, "insert failed at key %zu\n", i);
             return EXIT_FAILURE;
         }
@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
     }
     for (size_t repetition = 0; repetition < repetitions; ++repetition) {
         for (size_t i = 0; i < count; ++i)
-            checksum += JObject_get(object, keys[i]).data.number;
+            checksum += jacObject_get(object, keys[i]).data.number;
     }
     if (clock_gettime(CLOCK_MONOTONIC, &end) != 0) {
         perror("clock_gettime");
@@ -88,9 +88,9 @@ int main(int argc, char** argv) {
     }
     for (size_t repetition = 0; repetition < repetitions; ++repetition) {
         size_t index = 0;
-        JString key = {0};
-        JValue value = {0};
-        while (JObject_iter(object, &index, &key, &value)) {
+        jacString key = {0};
+        jacValue value = {0};
+        while (jacObject_iter(object, &index, &key, &value)) {
             checksum += value.data.number;
             ++iterated;
         }

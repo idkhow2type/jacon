@@ -16,133 +16,133 @@ static int failures;
         }                                                                      \
     } while (0)
 
-static JValue parse(const char* input) {
-    JValue value = {0};
-    CHECK(Jparse(input, &value));
+static jacValue parse(const char* input) {
+    jacValue value = {0};
+    CHECK(jac_parse(input, &value));
     return value;
 }
 
 static void expectInvalid(const char* input) {
-    JValue value = {.type = String};
-    CHECK(!Jparse(input, &value));
-    CHECK(value.type == Undefined);
+    jacValue value = {.type = JAC_TYPE_STRING};
+    CHECK(!jac_parse(input, &value));
+    CHECK(value.type == JAC_TYPE_UNDEFINED);
 }
 
 static void testNull(void) {
-    JValue value = parse(" null \n");
-    CHECK(value.type == Null);
-    JfreeValue(&value);
+    jacValue value = parse(" null \n");
+    CHECK(value.type == JAC_TYPE_NULL);
+    jac_freeValue(&value);
 }
 
 static void testBooleans(void) {
-    JValue trueValue = parse("true");
-    JValue falseValue = parse("\tfalse ");
-    CHECK(trueValue.type == Bool);
+    jacValue trueValue = parse("true");
+    jacValue falseValue = parse("\tfalse ");
+    CHECK(trueValue.type == JAC_TYPE_BOOL);
     CHECK(trueValue.data.boolean);
-    CHECK(falseValue.type == Bool);
+    CHECK(falseValue.type == JAC_TYPE_BOOL);
     CHECK(!falseValue.data.boolean);
-    JfreeValue(&trueValue);
-    JfreeValue(&falseValue);
+    jac_freeValue(&trueValue);
+    jac_freeValue(&falseValue);
 }
 
 static void testGenericValues(void) {
     bool boolInput = true;
-    JValue nullValue = JValue_from((void*)0);
-    JValue boolValue = JValue_from(boolInput);
-    JValue intValue = JValue_from(7);
-    JValue floatValue = JValue_from(1.5f);
-    JValue doubleValue = JValue_from(2.5);
-    JValue stringValue = JValue_from("hello");
+    jacValue nullValue = jacValue_from((void*)0);
+    jacValue boolValue = jacValue_from(boolInput);
+    jacValue intValue = jacValue_from(7);
+    jacValue floatValue = jacValue_from(1.5f);
+    jacValue doubleValue = jacValue_from(2.5);
+    jacValue stringValue = jacValue_from("hello");
     const char* constString = "world";
-    JValue constStringValue = JValue_from(constString);
+    jacValue constStringValue = jacValue_from(constString);
 
-    CHECK(nullValue.type == Null);
-    CHECK(boolValue.type == Bool && boolValue.data.boolean);
-    CHECK(intValue.type == Number && intValue.data.number == 7);
-    CHECK(floatValue.type == Number && floatValue.data.number == 1.5);
-    CHECK(doubleValue.type == Number && doubleValue.data.number == 2.5);
-    CHECK(stringValue.type == String);
+    CHECK(nullValue.type == JAC_TYPE_NULL);
+    CHECK(boolValue.type == JAC_TYPE_BOOL && boolValue.data.boolean);
+    CHECK(intValue.type == JAC_TYPE_NUMBER && intValue.data.number == 7);
+    CHECK(floatValue.type == JAC_TYPE_NUMBER && floatValue.data.number == 1.5);
+    CHECK(doubleValue.type == JAC_TYPE_NUMBER && doubleValue.data.number == 2.5);
+    CHECK(stringValue.type == JAC_TYPE_STRING);
     CHECK(strcmp(stringValue.data.string.data, "hello") == 0);
-    CHECK(constStringValue.type == String);
+    CHECK(constStringValue.type == JAC_TYPE_STRING);
     CHECK(strcmp(constStringValue.data.string.data, "world") == 0);
 
-    JObject object = {0};
-    JString key = {.data = "number", .len = 7};
-    CHECK(JObject_set2(&object, key, 42));
-    CHECK(JObject_get(object, key).data.number == 42);
-    CHECK(JObject_setcstr2(&object, "text", "value"));
-    JString textKey = JValue_from("text").data.string;
-    JValue value = JObject_get(object, textKey);
-    CHECK(value.type == String);
+    jacObject object = {0};
+    jacString key = {.data = "number", .len = 7};
+    CHECK(jacObject_setjs(&object, key, 42));
+    CHECK(jacObject_get(object, key).data.number == 42);
+    CHECK(jacObject_set(&object, "text", "value"));
+    jacString textKey = jacValue_from("text").data.string;
+    jacValue value = jacObject_get(object, textKey);
+    CHECK(value.type == JAC_TYPE_STRING);
     CHECK(strcmp(value.data.string.data, "value") == 0);
-    JfreeValue(&(JValue){.type = Object, .data.object = object});
+    jac_freeValue(&(jacValue){.type = JAC_TYPE_OBJECT, .data.object = object});
 }
 
 static void testStrings(void) {
-    JValue value = parse("\"line\\nquote: \\\"\\\\\\\"\"");
-    CHECK(value.type == String);
+    jacValue value = parse("\"line\\nquote: \\\"\\\\\\\"\"");
+    CHECK(value.type == JAC_TYPE_STRING);
     CHECK(strcmp(value.data.string.data, "line\nquote: \"\\\"") == 0);
     CHECK(value.data.string.len == strlen(value.data.string.data) + 1);
-    JfreeValue(&value);
+    jac_freeValue(&value);
 
     value = parse("\"A\\u00e9\\u4e16\"");
-    CHECK(value.type == String);
+    CHECK(value.type == JAC_TYPE_STRING);
     CHECK(strcmp(value.data.string.data, "A\xc3\xa9\xe4\xb8\x96") == 0);
-    JfreeValue(&value);
+    jac_freeValue(&value);
 }
 
 static void testArrays(void) {
-    JValue value = parse("[null, true, \"x\", [false]]");
-    CHECK(value.type == Array);
+    jacValue value = parse("[null, true, \"x\", [false]]");
+    CHECK(value.type == JAC_TYPE_ARRAY);
     CHECK(value.data.array.len == 4);
-    CHECK(value.data.array.data[0].type == Null);
-    CHECK(value.data.array.data[1].type == Bool);
+    CHECK(value.data.array.data[0].type == JAC_TYPE_NULL);
+    CHECK(value.data.array.data[1].type == JAC_TYPE_BOOL);
     CHECK(value.data.array.data[1].data.boolean);
-    CHECK(value.data.array.data[2].type == String);
+    CHECK(value.data.array.data[2].type == JAC_TYPE_STRING);
     CHECK(strcmp(value.data.array.data[2].data.string.data, "x") == 0);
-    CHECK(value.data.array.data[3].type == Array);
+    CHECK(value.data.array.data[3].type == JAC_TYPE_ARRAY);
     CHECK(value.data.array.data[3].data.array.len == 1);
-    CHECK(value.data.array.data[3].data.array.data[0].type == Bool);
+    CHECK(value.data.array.data[3].data.array.data[0].type == JAC_TYPE_BOOL);
     CHECK(!value.data.array.data[3].data.array.data[0].data.boolean);
-    JfreeValue(&value);
+    jac_freeValue(&value);
 
     value = parse("[]");
-    CHECK(value.type == Array);
+    CHECK(value.type == JAC_TYPE_ARRAY);
     CHECK(value.data.array.len == 0);
-    JfreeValue(&value);
+    jac_freeValue(&value);
 }
 
 static void testObjects(void) {
-    JValue value = parse("{\"name\": \"Ada\", \"active\": true, "
+    jacValue value = parse("{\"name\": \"Ada\", \"active\": true, "
                          "\"flags\": [true, false]}");
-    CHECK(value.type == Object);
+    CHECK(value.type == JAC_TYPE_OBJECT);
     CHECK(value.data.object.len == 3);
 
-    JString nameKey = {.data = "name", .len = 5};
-    JString activeKey = {.data = "active", .len = 7};
-    JString flagsKey = {.data = "flags", .len = 6};
-    JValue name = JObject_get(value.data.object, nameKey);
-    JValue active = JObject_get(value.data.object, activeKey);
-    JValue flags = JObject_get(value.data.object, flagsKey);
-    CHECK(name.type == String);
+    jacString nameKey = {.data = "name", .len = 5};
+    jacString activeKey = {.data = "active", .len = 7};
+    jacString flagsKey = {.data = "flags", .len = 6};
+    jacValue name = jacObject_get(value.data.object, nameKey);
+    jacValue active = jacObject_get(value.data.object, activeKey);
+    jacValue flags = jacObject_get(value.data.object, flagsKey);
+    CHECK(name.type == JAC_TYPE_STRING);
     CHECK(strcmp(name.data.string.data, "Ada") == 0);
-    CHECK(active.type == Bool);
+    CHECK(active.type == JAC_TYPE_BOOL);
     CHECK(active.data.boolean);
-    CHECK(flags.type == Array);
+    CHECK(flags.type == JAC_TYPE_ARRAY);
     CHECK(flags.data.array.len == 2);
 
     size_t index = 0;
     size_t iterated = 0;
-    JString key = {0};
-    JValue field = {0};
-    while (JObject_iter(value.data.object, &index, &key, &field)) iterated++;
+    jacString key = {0};
+    jacValue field = {0};
+    while (jacObject_iter(value.data.object, &index, &key, &field)) iterated++;
     CHECK(iterated == value.data.object.len);
-    JfreeValue(&value);
+    jac_freeValue(&value);
 
     value = parse("{}");
-    CHECK(value.type == Object);
+    CHECK(value.type == JAC_TYPE_OBJECT);
     CHECK(value.data.object.len == 0);
-    JfreeValue(&value);
+    jac_freeValue(&value);
 }
 
 static void testInvalidInput(void) {
@@ -158,22 +158,22 @@ static void testInvalidInput(void) {
 }
 
 static void testHashMap(void) {
-    JObject object = {0};
-    JString firstKey = {.data = "a", .len = 1};
-    JString collisionKey = {.data = "e", .len = 1};
-    JString thirdKey = {.data = "third", .len = 5};
-    JValue first = {.type = Number, .data.number = 1};
-    JValue collision = {.type = Number, .data.number = 2};
-    JValue third = {.type = Number, .data.number = 3};
+    jacObject object = {0};
+    jacString firstKey = {.data = "a", .len = 1};
+    jacString collisionKey = {.data = "e", .len = 1};
+    jacString thirdKey = {.data = "third", .len = 5};
+    jacValue first = {.type = JAC_TYPE_NUMBER, .data.number = 1};
+    jacValue collision = {.type = JAC_TYPE_NUMBER, .data.number = 2};
+    jacValue third = {.type = JAC_TYPE_NUMBER, .data.number = 3};
     char* allocatedKeys[5] = {0};
 
-    CHECK(JObject_set(&object, firstKey, first));
-    CHECK(JObject_set(&object, collisionKey, collision));
-    CHECK(JObject_set(&object, thirdKey, third));
+    CHECK(jacObject_setjsval(&object, firstKey, first));
+    CHECK(jacObject_setjsval(&object, collisionKey, collision));
+    CHECK(jacObject_setjsval(&object, thirdKey, third));
     CHECK(object.len == 3);
-    CHECK(JObject_get(object, firstKey).data.number == 1);
-    CHECK(JObject_get(object, collisionKey).data.number == 2);
-    CHECK(JObject_get(object, thirdKey).data.number == 3);
+    CHECK(jacObject_get(object, firstKey).data.number == 1);
+    CHECK(jacObject_get(object, collisionKey).data.number == 2);
+    CHECK(jacObject_get(object, thirdKey).data.number == 3);
 
     for (size_t i = 0; i < 5; ++i) {
         char* keyData = malloc(2);
@@ -182,19 +182,19 @@ static void testHashMap(void) {
         allocatedKeys[i] = keyData;
         keyData[0] = (char)('f' + i);
         keyData[1] = '\0';
-        JString key = {.data = keyData, .len = 1};
-        JValue value = {.type = Number, .data.number = 10 + i};
-        CHECK(JObject_set(&object, key, value));
+        jacString key = {.data = keyData, .len = 1};
+        jacValue value = {.type = JAC_TYPE_NUMBER, .data.number = 10 + i};
+        CHECK(jacObject_setjsval(&object, key, value));
     }
     CHECK(object.cap > 4);
     CHECK(object.len == 8);
-    CHECK(JObject_get(object, firstKey).data.number == 1);
-    CHECK(JObject_get(object, collisionKey).data.number == 2);
+    CHECK(jacObject_get(object, firstKey).data.number == 1);
+    CHECK(jacObject_get(object, collisionKey).data.number == 2);
 
-    JValue replacement = {.type = Number, .data.number = 99};
-    CHECK(JObject_set(&object, firstKey, replacement));
+    jacValue replacement = {.type = JAC_TYPE_NUMBER, .data.number = 99};
+    CHECK(jacObject_setjsval(&object, firstKey, replacement));
     CHECK(object.len == 8);
-    CHECK(JObject_get(object, firstKey).data.number == 99);
+    CHECK(jacObject_get(object, firstKey).data.number == 99);
 
     for (size_t i = 0; i < 5; ++i) free(allocatedKeys[i]);
     free(object.data);
