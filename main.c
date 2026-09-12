@@ -17,7 +17,7 @@ int main() {
     // }
     // JObject_setcstr(&value.data.object, "hello",
     //                 );
-    JObject_setcstr2(&value.data.object, "hello", NULL);
+    JObject_setcstr2(&value.data.object, "ggethrytu", NULL);
     JObject_setcstr2(&value.data.object, "blah", "abc");
     char* encoded = Jencode(value).data;
     printf("%s\n",encoded);

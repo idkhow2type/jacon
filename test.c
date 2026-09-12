@@ -45,6 +45,39 @@ static void testBooleans(void) {
     JfreeValue(&falseValue);
 }
 
+static void testGenericValues(void) {
+    bool boolInput = true;
+    JValue nullValue = JValue_from((void*)0);
+    JValue boolValue = JValue_from(boolInput);
+    JValue intValue = JValue_from(7);
+    JValue floatValue = JValue_from(1.5f);
+    JValue doubleValue = JValue_from(2.5);
+    JValue stringValue = JValue_from("hello");
+    const char* constString = "world";
+    JValue constStringValue = JValue_from(constString);
+
+    CHECK(nullValue.type == Null);
+    CHECK(boolValue.type == Bool && boolValue.data.boolean);
+    CHECK(intValue.type == Number && intValue.data.number == 7);
+    CHECK(floatValue.type == Number && floatValue.data.number == 1.5);
+    CHECK(doubleValue.type == Number && doubleValue.data.number == 2.5);
+    CHECK(stringValue.type == String);
+    CHECK(strcmp(stringValue.data.string.data, "hello") == 0);
+    CHECK(constStringValue.type == String);
+    CHECK(strcmp(constStringValue.data.string.data, "world") == 0);
+
+    JObject object = {0};
+    JString key = {.data = "number", .len = 7};
+    CHECK(JObject_set2(&object, key, 42));
+    CHECK(JObject_get(object, key).data.number == 42);
+    CHECK(JObject_setcstr2(&object, "text", "value"));
+    JString textKey = JValue_from("text").data.string;
+    JValue value = JObject_get(object, textKey);
+    CHECK(value.type == String);
+    CHECK(strcmp(value.data.string.data, "value") == 0);
+    JfreeValue(&(JValue){.type = Object, .data.object = object});
+}
+
 static void testStrings(void) {
     JValue value = parse("\"line\\nquote: \\\"\\\\\\\"\"");
     CHECK(value.type == String);
@@ -170,6 +203,7 @@ static void testHashMap(void) {
 int main(void) {
     testNull();
     testBooleans();
+    testGenericValues();
     testStrings();
     testArrays();
     testObjects();
