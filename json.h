@@ -94,7 +94,7 @@ bool jacObject_setjsval(jacObject* object, const jacString key,
     jacObject_setval(_Generic((object), jacObject*: object), \
                      _Generic((key), char*: key), jacValue_from(value))
 jacValue jacObject_getjs(const jacObject object, const jacString key);
-#define jacValue_get                              \
+#define jacObject_get                              \
     jacObject_getjs(object, key) jacObject_getjs( \
         _Generic((object), jacObject*: object),   \
         _Generic((key), char*: jacValue_from_cstr(key).data.string))

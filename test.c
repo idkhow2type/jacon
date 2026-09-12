@@ -58,7 +58,7 @@ static void testGenericValues(void) {
 
     CHECK(nullValue.type == JAC_TYPE_NULL);
     CHECK(boolValue.type == JAC_TYPE_BOOL && boolValue.data.boolean);
-    CHECK(intValue.type == JAC_TYPE_DOUBLE && intValue.data.dnumber == 7);
+    CHECK(intValue.type == JAC_TYPE_INT && intValue.data.inumber == 7);
     CHECK(floatValue.type == JAC_TYPE_DOUBLE && floatValue.data.dnumber == 1.5);
     CHECK(doubleValue.type == JAC_TYPE_DOUBLE && doubleValue.data.dnumber == 2.5);
     CHECK(stringValue.type == JAC_TYPE_STRING);
@@ -67,12 +67,12 @@ static void testGenericValues(void) {
     CHECK(strcmp(constStringValue.data.string.data, "world") == 0);
 
     jacObject object = {0};
-    jacString key = {.data = "number", .len = 7};
+    jacString key = {.data = "number", .len = 6, .isView = true};
     CHECK(jacObject_setjs(&object, key, 42));
-    CHECK(jacObject_get(object, key).data.number == 42);
+    CHECK(jacObject_getjs(object, key).data.inumber == 42);
     CHECK(jacObject_set(&object, "text", "value"));
     jacString textKey = jacValue_from("text").data.string;
-    jacValue value = jacObject_get(object, textKey);
+    jacValue value = jacObject_getjs(object, textKey);
     CHECK(value.type == JAC_TYPE_STRING);
     CHECK(strcmp(value.data.string.data, "value") == 0);
     jac_freeValue(&(jacValue){.type = JAC_TYPE_OBJECT, .data.object = object});
@@ -82,7 +82,7 @@ static void testStrings(void) {
     jacValue value = parse("\"line\\nquote: \\\"\\\\\\\"\"");
     CHECK(value.type == JAC_TYPE_STRING);
     CHECK(strcmp(value.data.string.data, "line\nquote: \"\\\"") == 0);
-    CHECK(value.data.string.len == strlen(value.data.string.data) + 1);
+    CHECK(value.data.string.len == strlen(value.data.string.data));
     jac_freeValue(&value);
 
     value = parse("\"A\\u00e9\\u4e16\"");
@@ -118,12 +118,12 @@ static void testObjects(void) {
     CHECK(value.type == JAC_TYPE_OBJECT);
     CHECK(value.data.object.len == 3);
 
-    jacString nameKey = {.data = "name", .len = 5};
-    jacString activeKey = {.data = "active", .len = 7};
-    jacString flagsKey = {.data = "flags", .len = 6};
-    jacValue name = jacObject_get(value.data.object, nameKey);
-    jacValue active = jacObject_get(value.data.object, activeKey);
-    jacValue flags = jacObject_get(value.data.object, flagsKey);
+    jacString nameKey = {.data = "name", .len = 4, .isView = true};
+    jacString activeKey = {.data = "active", .len = 6, .isView = true};
+    jacString flagsKey = {.data = "flags", .len = 5, .isView = true};
+    jacValue name = jacObject_getjs(value.data.object, nameKey);
+    jacValue active = jacObject_getjs(value.data.object, activeKey);
+    jacValue flags = jacObject_getjs(value.data.object, flagsKey);
     CHECK(name.type == JAC_TYPE_STRING);
     CHECK(strcmp(name.data.string.data, "Ada") == 0);
     CHECK(active.type == JAC_TYPE_BOOL);
@@ -159,45 +159,42 @@ static void testInvalidInput(void) {
 
 static void testHashMap(void) {
     jacObject object = {0};
-    jacString firstKey = {.data = "a", .len = 1};
-    jacString collisionKey = {.data = "e", .len = 1};
-    jacString thirdKey = {.data = "third", .len = 5};
+    jacString firstKey = {.data = "a", .len = 1, .isView = true};
+    jacString collisionKey = {.data = "e", .len = 1, .isView = true};
+    jacString thirdKey = {.data = "third", .len = 5, .isView = true};
     jacValue first = {.type = JAC_TYPE_DOUBLE, .data.dnumber = 1};
     jacValue collision = {.type = JAC_TYPE_DOUBLE, .data.dnumber = 2};
     jacValue third = {.type = JAC_TYPE_DOUBLE, .data.dnumber = 3};
-    char* allocatedKeys[5] = {0};
 
     CHECK(jacObject_setjsval(&object, firstKey, first));
     CHECK(jacObject_setjsval(&object, collisionKey, collision));
     CHECK(jacObject_setjsval(&object, thirdKey, third));
     CHECK(object.len == 3);
-    CHECK(jacObject_get(object, firstKey).data.number == 1);
-    CHECK(jacObject_get(object, collisionKey).data.number == 2);
-    CHECK(jacObject_get(object, thirdKey).data.number == 3);
+    CHECK(jacObject_getjs(object, firstKey).data.dnumber == 1);
+    CHECK(jacObject_getjs(object, collisionKey).data.dnumber == 2);
+    CHECK(jacObject_getjs(object, thirdKey).data.dnumber == 3);
 
     for (size_t i = 0; i < 5; ++i) {
         char* keyData = malloc(2);
         CHECK(keyData != NULL);
         if (keyData == NULL) continue;
-        allocatedKeys[i] = keyData;
         keyData[0] = (char)('f' + i);
         keyData[1] = '\0';
-        jacString key = {.data = keyData, .len = 1};
+        jacString key = {.data = keyData, .len = 1, .isView = false};
         jacValue value = {.type = JAC_TYPE_DOUBLE, .data.dnumber = 10 + i};
         CHECK(jacObject_setjsval(&object, key, value));
     }
     CHECK(object.cap > 4);
     CHECK(object.len == 8);
-    CHECK(jacObject_get(object, firstKey).data.number == 1);
-    CHECK(jacObject_get(object, collisionKey).data.number == 2);
+    CHECK(jacObject_getjs(object, firstKey).data.dnumber == 1);
+    CHECK(jacObject_getjs(object, collisionKey).data.dnumber == 2);
 
     jacValue replacement = {.type = JAC_TYPE_DOUBLE, .data.dnumber = 99};
     CHECK(jacObject_setjsval(&object, firstKey, replacement));
     CHECK(object.len == 8);
-    CHECK(jacObject_get(object, firstKey).data.number == 99);
+    CHECK(jacObject_getjs(object, firstKey).data.dnumber == 99);
 
-    for (size_t i = 0; i < 5; ++i) free(allocatedKeys[i]);
-    free(object.data);
+    jac_freeValue(&(jacValue){.type = JAC_TYPE_OBJECT, .data.object = object});
 }
 
 int main(void) {

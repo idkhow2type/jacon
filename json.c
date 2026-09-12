@@ -96,7 +96,7 @@ bool jacObject_setjsval(jacObject* object, const jacString key,
     return true;
 }
 
-jacValue jacObject_get(const jacObject object, const jacString key) {
+jacValue jacObject_getjs(const jacObject object, const jacString key) {
     size_t h = (hash(key.data, key.len) & (object.cap - 1));
     for (size_t i = 0; !jacString_cmp(object.data[h].key, key); ++i)
         h = (h + (i + i * i) / 2) % object.cap;
