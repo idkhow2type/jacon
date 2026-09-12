@@ -365,4 +365,60 @@ bool Jparse(const char* in, JValue* out) {
     return true;
 }
 
-JString Jencode(JValue value);
+JString Jencode(JValue value) {
+    JString out = MAKE_ARRAY(JString, char);
+    switch (value.type) {
+        case Null: {
+            char text[] = "null";
+            for (size_t i = 0; text[i]; i++) JString_append(&out, text[i]);
+        } break;
+        case Bool: {
+            char* text = value.data.boolean ? "true" : "false";
+            for (size_t i = 0; text[i]; i++) JString_append(&out, text[i]);
+        } break;
+        case Array:
+            JString_append(&out, '[');
+            for (size_t i = 0; i < value.data.array.len; ++i) {
+                JString child = Jencode(value.data.array.data[i]);
+                for (size_t j = 0; j < child.len; ++j)
+                    JString_append(&out, child.data[j]);
+                if (i + 1 < value.data.array.len) JString_append(&out, ',');
+                free(child.data);
+            }
+            JString_append(&out, ']');
+            break;
+        case String:
+            JString_append(&out, '"');
+            for (size_t i = 0; i < value.data.string.len; ++i)
+                JString_append(&out, value.data.string.data[i]);
+            JString_append(&out, '"');
+            break;
+        case Number:
+            // TODO
+            break;
+        case Object:
+            JString_append(&out, '{');
+            size_t i = 0;
+            JString key = {0};
+            JValue field = {0};
+            for (size_t j = 0;
+                 j < value.data.object.len &&
+                 JObject_iter(value.data.object, &i, &key, &field);
+                 ++j) {
+                JString_append(&out, '"');
+                for (size_t k = 0; k < key.len; ++k)
+                    JString_append(&out, key.data[k]);
+                JString_append(&out, '"');
+                JString_append(&out, ':');
+                JString child = Jencode(field);
+                for (size_t k = 0; k < child.len; ++k)
+                    JString_append(&out, child.data[k]);
+                free(child.data);
+                if (j + 1 < value.data.object.len) JString_append(&out, ',');
+            }
+            JString_append(&out, '}');
+        default:
+            break;
+    }
+    return out;
+};

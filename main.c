@@ -5,51 +5,6 @@
 
 #include "json.h"
 
-void printValue(const JValue value) {
-    switch (value.type) {
-        case Null:
-            printf("null");
-            break;
-        case Bool:
-            printf("%s", value.data.boolean ? "true" : "false");
-            break;
-        case Array:
-            printf("[");
-            for (size_t i = 0; i < value.data.array.len; ++i) {
-                printValue(value.data.array.data[i]);
-                if (i + 1 < value.data.array.len) printf(", ");
-            }
-            printf("]");
-            break;
-        case String:
-            printf("\"");
-            for (size_t i = 0; i < value.data.string.len; ++i)
-                printf("%c", value.data.string.data[i]);
-            printf("\"");
-            break;
-        case Number:
-            printf("%.2f", value.data.number);
-            break;
-        case Object:
-            printf("{");
-            size_t i = 0;
-            JString key = {0};
-            JValue field = {0};
-            for (size_t j = 0;
-                 j < value.data.object.len &&
-                 JObject_iter(value.data.object, &i, &key, &field);
-                 ++j) {
-                printValue((JValue){.type = String, .data = {.string = key}});
-                printf(": ");
-                printValue(field);
-                if (j + 1 < value.data.object.len) printf(", ");
-            }
-            printf("}");
-        default:
-            break;
-    }
-}
-
 int main() {
     JValue value = {.type = Object};
     // char in[] = {'t', 'r', 'u', 'e'};
@@ -62,10 +17,11 @@ int main() {
     // }
     // JObject_setcstr(&value.data.object, "hello",
     //                 );
-    JObject_setcstr2(&value.data.object, "hello", 1.1);
+    JObject_setcstr2(&value.data.object, "hello", NULL);
     JObject_setcstr2(&value.data.object, "blah", "abc");
-    printValue(value);
-    printf("\n");
+    char* encoded = Jencode(value).data;
+    printf("%s\n",encoded);
+    free(encoded);
     JfreeValue(&value);
     // free(value);
 

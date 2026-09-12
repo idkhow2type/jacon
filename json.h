@@ -47,6 +47,9 @@ typedef struct JValue {
     } data;
 } JValue;
 
+static inline JValue JValue_from_null() {
+    return (JValue){.type = Null};
+}
 static inline JValue JValue_from_bool(bool value) {
     return (JValue){.type = Bool, .data.boolean = value};
 }
@@ -64,8 +67,9 @@ static inline JValue JValue_from_cstr(const char* value) {
         .type = String,
         .data.string = {.data = (char*)value, .len = strlen(value), .cap = 0}};
 }
-#define JValue_from(value)            \
+#define JValue_from(value)          \
     _Generic((value),               \
+        void*: JValue_from_null,    \
         bool: JValue_from_bool,     \
         int: JValue_from_int,       \
         float: JValue_from_float,   \
@@ -77,7 +81,6 @@ bool Jparse(const char* in, JValue* out);
 void JfreeValue(JValue* value);
 
 JString Jencode(const JValue value);
-char* Jencodecstr(const JValue value);
 
 bool JObject_set(JObject* object, const JString key, const JValue value);
 #define JObject_setcstr(object, key, value) \
