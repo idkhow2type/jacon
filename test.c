@@ -58,9 +58,9 @@ static void testGenericValues(void) {
 
     CHECK(nullValue.type == JAC_TYPE_NULL);
     CHECK(boolValue.type == JAC_TYPE_BOOL && boolValue.data.boolean);
-    CHECK(intValue.type == JAC_TYPE_NUMBER && intValue.data.number == 7);
-    CHECK(floatValue.type == JAC_TYPE_NUMBER && floatValue.data.number == 1.5);
-    CHECK(doubleValue.type == JAC_TYPE_NUMBER && doubleValue.data.number == 2.5);
+    CHECK(intValue.type == JAC_TYPE_DOUBLE && intValue.data.dnumber == 7);
+    CHECK(floatValue.type == JAC_TYPE_DOUBLE && floatValue.data.dnumber == 1.5);
+    CHECK(doubleValue.type == JAC_TYPE_DOUBLE && doubleValue.data.dnumber == 2.5);
     CHECK(stringValue.type == JAC_TYPE_STRING);
     CHECK(strcmp(stringValue.data.string.data, "hello") == 0);
     CHECK(constStringValue.type == JAC_TYPE_STRING);
@@ -162,9 +162,9 @@ static void testHashMap(void) {
     jacString firstKey = {.data = "a", .len = 1};
     jacString collisionKey = {.data = "e", .len = 1};
     jacString thirdKey = {.data = "third", .len = 5};
-    jacValue first = {.type = JAC_TYPE_NUMBER, .data.number = 1};
-    jacValue collision = {.type = JAC_TYPE_NUMBER, .data.number = 2};
-    jacValue third = {.type = JAC_TYPE_NUMBER, .data.number = 3};
+    jacValue first = {.type = JAC_TYPE_DOUBLE, .data.dnumber = 1};
+    jacValue collision = {.type = JAC_TYPE_DOUBLE, .data.dnumber = 2};
+    jacValue third = {.type = JAC_TYPE_DOUBLE, .data.dnumber = 3};
     char* allocatedKeys[5] = {0};
 
     CHECK(jacObject_setjsval(&object, firstKey, first));
@@ -183,7 +183,7 @@ static void testHashMap(void) {
         keyData[0] = (char)('f' + i);
         keyData[1] = '\0';
         jacString key = {.data = keyData, .len = 1};
-        jacValue value = {.type = JAC_TYPE_NUMBER, .data.number = 10 + i};
+        jacValue value = {.type = JAC_TYPE_DOUBLE, .data.dnumber = 10 + i};
         CHECK(jacObject_setjsval(&object, key, value));
     }
     CHECK(object.cap > 4);
@@ -191,7 +191,7 @@ static void testHashMap(void) {
     CHECK(jacObject_get(object, firstKey).data.number == 1);
     CHECK(jacObject_get(object, collisionKey).data.number == 2);
 
-    jacValue replacement = {.type = JAC_TYPE_NUMBER, .data.number = 99};
+    jacValue replacement = {.type = JAC_TYPE_DOUBLE, .data.dnumber = 99};
     CHECK(jacObject_setjsval(&object, firstKey, replacement));
     CHECK(object.len == 8);
     CHECK(jacObject_get(object, firstKey).data.number == 99);

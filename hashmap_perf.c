@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
             return EXIT_FAILURE;
         }
         keys[i] = (jacString){.data = keyData[i], .len = (size_t)length};
-        jacValue value = {.type = JAC_TYPE_NUMBER, .data.number = (double)i};
+        jacValue value = {.type = JAC_TYPE_DOUBLE, .data.dnumber = (double)i};
         if (!jacObject_setjsval(&object, keys[i], value)) {
             fprintf(stderr, "insert failed at key %zu\n", i);
             return EXIT_FAILURE;
@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
     }
     for (size_t repetition = 0; repetition < repetitions; ++repetition) {
         for (size_t i = 0; i < count; ++i)
-            checksum += jacObject_get(object, keys[i]).data.number;
+            checksum += jacObject_getjs(object, keys[i]).data.dnumber;
     }
     if (clock_gettime(CLOCK_MONOTONIC, &end) != 0) {
         perror("clock_gettime");
@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
         jacString key = {0};
         jacValue value = {0};
         while (jacObject_iter(object, &index, &key, &value)) {
-            checksum += value.data.number;
+            checksum += value.data.dnumber;
             ++iterated;
         }
     }
