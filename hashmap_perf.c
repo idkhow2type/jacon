@@ -81,6 +81,26 @@ int main(int argc, char** argv) {
     }
     double lookupSeconds = elapsedSeconds(start, end);
 
+    size_t iterated = 0;
+    if (clock_gettime(CLOCK_MONOTONIC, &start) != 0) {
+        perror("clock_gettime");
+        return EXIT_FAILURE;
+    }
+    for (size_t repetition = 0; repetition < repetitions; ++repetition) {
+        size_t index = 0;
+        JString key = {0};
+        JValue value = {0};
+        while (JObject_iter(object, &index, &key, &value)) {
+            checksum += value.data.number;
+            ++iterated;
+        }
+    }
+    if (clock_gettime(CLOCK_MONOTONIC, &end) != 0) {
+        perror("clock_gettime");
+        return EXIT_FAILURE;
+    }
+    double iterationSeconds = elapsedSeconds(start, end);
+
     printf("hashmap performance (%zu keys, %zu lookup repetitions)\n", count,
            repetitions);
     printf("insert: %.3f ms total, %.1f ns/key\n", insertSeconds * 1000.0,
@@ -88,6 +108,9 @@ int main(int argc, char** argv) {
     printf("lookup: %.3f ms total, %.1f ns/lookup\n",
            lookupSeconds * 1000.0,
            lookupSeconds * 1e9 / (double)(count * repetitions));
+        printf("iterate: %.3f ms total, %.1f ns/entry\n",
+            iterationSeconds * 1000.0,
+            iterationSeconds * 1e9 / (double)iterated);
     printf("checksum: %.0f\n", checksum);
 
     free(object.data);

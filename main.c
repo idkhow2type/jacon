@@ -23,9 +23,8 @@ void printValue(const JValue value) {
             break;
         case String:
             printf("\"");
-            for (size_t i = 0; i < value.data.string.len; ++i) {
+            for (size_t i = 0; i < value.data.string.len; ++i)
                 printf("%c", value.data.string.data[i]);
-            }
             printf("\"");
             break;
         case Number:
@@ -52,15 +51,21 @@ void printValue(const JValue value) {
 }
 
 int main() {
-    JValue value = {0};
+    JValue value = {.type = Object};
     // char in[] = {'t', 'r', 'u', 'e'};
-    char in[] = "{\"abc\":true,\"123\":false}";
-    if (Jparse(in, &value)) {
-        printValue(value);
-        printf("\n");
-    } else {
-        printf("err\n");
-    }
+    // char in[] = "{\"abc\":true,\"123\":false}";
+    // if (Jparse(in, &value)) {
+    //     printValue(value);
+    //     printf("\n");
+    // } else {
+    //     printf("err\n");
+    // }
+    // JObject_setcstr(&value.data.object, "hello",
+    //                 );
+    JObject_setcstr2(&value.data.object, "hello", 1.1);
+    JObject_setcstr2(&value.data.object, "blah", "abc");
+    printValue(value);
+    printf("\n");
     JfreeValue(&value);
     // free(value);
 

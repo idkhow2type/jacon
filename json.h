@@ -4,7 +4,9 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
+// array is readonly if cap = 0
 #define DECLARE_ARRAY(Name, T) \
     typedef struct Name {      \
         T* data;               \
@@ -45,10 +47,48 @@ typedef struct JValue {
     } data;
 } JValue;
 
+static inline JValue JValue_from_bool(bool value) {
+    return (JValue){.type = Bool, .data.boolean = value};
+}
+static inline JValue JValue_from_int(int value) {
+    return (JValue){.type = Number, .data.number = (double)value};
+}
+static inline JValue JValue_from_float(double value) {
+    return (JValue){.type = Number, .data.number = (double)value};
+}
+static inline JValue JValue_from_double(double value) {
+    return (JValue){.type = Number, .data.number = (double)value};
+}
+static inline JValue JValue_from_cstr(const char* value) {
+    return (JValue){
+        .type = String,
+        .data.string = {.data = (char*)value, .len = strlen(value), .cap = 0}};
+}
+#define JValue_from(value)            \
+    _Generic((value),               \
+        bool: JValue_from_bool,     \
+        int: JValue_from_int,       \
+        float: JValue_from_float,   \
+        double: JValue_from_double, \
+        char*: JValue_from_cstr,    \
+        const char*: JValue_from_cstr)(value)
+
 bool Jparse(const char* in, JValue* out);
 void JfreeValue(JValue* value);
-bool JObject_set(JObject* object, JString key, JValue value);
-JValue JObject_get(JObject object, JString key);
-bool JObject_iter(JObject object, size_t* i, JString* key, JValue* value);
+
+JString Jencode(const JValue value);
+char* Jencodecstr(const JValue value);
+
+bool JObject_set(JObject* object, const JString key, const JValue value);
+#define JObject_setcstr(object, key, value) \
+    JObject_set(object, JValue_from_cstr(key).data.string, value)
+#define JObject_set2(object, key, value) \
+    JObject_set(object, key, JValue_from(value));
+#define JObject_setcstr2(object, key, value) \
+    JObject_setcstr(object, key, JValue_from(value));
+
+JValue JObject_get(const JObject object, const JString key);
+JValue JObject_getcstr(const JObject object, const char* key);
+bool JObject_iter(const JObject object, size_t* i, JString* key, JValue* value);
 
 #endif

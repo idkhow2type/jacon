@@ -79,7 +79,7 @@ static bool resize(JObject* object) {
     return true;
 }
 
-bool JObject_set(JObject* object, JString key, JValue value) {
+bool JObject_set(JObject* object, const JString key, const JValue value) {
     if (object->len >= object->cap - object->cap / 4)
         if (!resize(object)) return false;
 
@@ -95,14 +95,15 @@ bool JObject_set(JObject* object, JString key, JValue value) {
     return true;
 }
 
-JValue JObject_get(const JObject object, JString key) {
+JValue JObject_get(const JObject object, const JString key) {
     size_t h = (hash(key.data, key.len) & (object.cap - 1));
     for (size_t i = 0; !JString_cmp(object.data[h].key, key); ++i)
         h = (h + (i + i * i) / 2) % object.cap;
     return object.data[h].value;
 }
 
-bool JObject_iter(JObject object, size_t* i, JString* key, JValue* value) {
+bool JObject_iter(const JObject object, size_t* i, JString* key,
+                  JValue* value) {
     while (*i < object.cap) {
         if (object.data[*i].value.type != Undefined) {
             *key = object.data[*i].key;
@@ -120,17 +121,17 @@ void JfreeValue(JValue* value) {
         case Array:
             for (size_t i = 0; i < value->data.array.len; ++i)
                 JfreeValue(&value->data.array.data[i]);
-            free(value->data.array.data);
+            if (value->data.array.cap) free(value->data.array.data);
             break;
         case String:
-            free(value->data.string.data);
+            if (value->data.string.cap) free(value->data.string.data);
             break;
         case Object:
             size_t i = 0;
             JString key = {0};
             JValue field = {0};
             while (JObject_iter(value->data.object, &i, &key, &field)) {
-                free(key.data);
+                if (key.cap) free(key.data);
                 JfreeValue(&field);
             }
             free(value->data.object.data);
@@ -363,3 +364,5 @@ bool Jparse(const char* in, JValue* out) {
     }
     return true;
 }
+
+JString Jencode(JValue value);
