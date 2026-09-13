@@ -7,13 +7,10 @@
 
 int main() {
     jacValue value;
-    char* in = "{\"\\u0007\":true}";
-    if (jac_parse(in, &value)) {
+    if (jac_parse("{\"hello\":\"wo\\u0007rld\"}", &value)) {
         jacString s = jac_encode(value);
         for (size_t i = 0; i < s.len; i++) printf("%c", s.data[i]);
         printf("\n");
     } else
         printf("err\n");
-
-    // printf("%ld\n",strlen("123"));
 }

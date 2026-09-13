@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -10,24 +11,26 @@
     (Name) {                                                                 \
         .len = 0, .cap = DEFAULT_CAP, .data = calloc(DEFAULT_CAP, sizeof(T)) \
     }
-#define DEFINE_ARRAY(Name, T)                                                 \
-    bool Name##_append(Name* array, T value) {                                \
-        if (array->len >= array->cap) {                                       \
-            size_t next_cap = array->cap == 0 ? DEFAULT_CAP : array->cap * 2; \
-            if (next_cap < array->cap ||                                      \
-                next_cap > (size_t)-1 / sizeof(*array->data)) {               \
-                return false;                                                 \
-            }                                                                 \
-                                                                              \
-            T* next = realloc(array->data, next_cap * sizeof(*next));         \
-            if (next == NULL) return false;                                   \
-                                                                              \
-            array->data = next;                                               \
-            array->cap = next_cap;                                            \
-        }                                                                     \
-        array->data[array->len++] = value;                                    \
-        return true;                                                          \
-    };
+#define DEFINE_ARRAY(Name, T)                                                \
+    bool Name##_resize(Name* array) {                                        \
+        size_t next_cap = array->cap == 0 ? DEFAULT_CAP : array->cap * 2;    \
+        if (next_cap < array->cap ||                                         \
+            next_cap > (size_t)-1 / sizeof(*array->data)) {                  \
+            return false;                                                    \
+        }                                                                    \
+                                                                             \
+        T* next = realloc(array->data, next_cap * sizeof(*next));            \
+        if (next == NULL) return false;                                      \
+                                                                             \
+        array->data = next;                                                  \
+        array->cap = next_cap;                                               \
+        return true;                                                         \
+    }                                                                        \
+    bool Name##_append(Name* array, T value) {                               \
+        if (array->len >= array->cap && !Name##_resize(array)) return false; \
+        array->data[array->len++] = value;                                   \
+        return true;                                                         \
+    }
 
 DEFINE_ARRAY(jacArray, struct jacValue);
 DECLARE_ARRAY(CharArray, char);
@@ -56,7 +59,7 @@ static uint64_t hash(const char* s, size_t len) {
     return hash;
 }
 
-static bool resize(jacObject* object) {
+static bool jacObject_resize(jacObject* object) {
     size_t next_cap = object->cap == 0 ? DEFAULT_CAP : object->cap * 2;
     if (next_cap < object->cap ||
         next_cap > (size_t)-1 / sizeof(*object->data)) {
@@ -82,7 +85,7 @@ static bool resize(jacObject* object) {
 bool jacObject_setjsval(jacObject* object, const jacString key,
                         const jacValue value) {
     if (object->len >= object->cap - object->cap / 4)
-        if (!resize(object)) return false;
+        if (!jacObject_resize(object)) return false;
 
     size_t h = (hash(key.data, key.len) & (object->cap - 1));
     bool override = false;
@@ -345,8 +348,31 @@ fail:
     return false;
 }
 
-static valueParser valueParsers[] = {nullParser, boolParser, arrayParser,
-                                     stringParser, objectParser};
+static bool numberParser(const char** in, jacValue* out) {
+    const char* start = *in;
+    char d;
+    if (!consumeSet(in, &d, "-0123456789")) goto fail;
+    if (d == '-' && !consumeSet(in, &d, "0123456789")) goto fail;
+    if (d == '0' && !consumeSet(in, &d, "123456789")) goto fail;
+
+    *out = (jacValue){.type = JAC_TYPE_INT,
+                      .data.inumber = strtol(start, (char**)in, 10)};
+    if (consumeSet(in, &d, ".eE")) {
+        if (d == '.' && !consumeSet(in, &d, "0123456789")) goto fail;
+        *out = (jacValue){.type = JAC_TYPE_DOUBLE,
+                          .data.dnumber = strtod(start, (char**)in)};
+        if (*in == start) goto fail;
+    }
+
+    return true;
+fail:
+    *in = start;
+    *out = (jacValue){0};
+    return false;
+}
+
+static valueParser valueParsers[] = {nullParser,   boolParser,   arrayParser,
+                                     stringParser, objectParser, numberParser};
 
 static bool parseValue(const char** in, jacValue* out) {
     *out = (jacValue){0};
@@ -373,41 +399,50 @@ bool jac_parse(const char* in, jacValue* out) {
 }
 
 jacString jac_encode(jacValue value) {
-    CharArray charArray = MAKE_ARRAY(CharArray, char);
+    CharArray ca = MAKE_ARRAY(CharArray, char);
     switch (value.type) {
-        case JAC_TYPE_NULL: {
-            char text[] = "null";
-            for (size_t i = 0; text[i]; i++)
-                CharArray_append(&charArray, text[i]);
-        } break;
-        case JAC_TYPE_BOOL: {
-            char* text = value.data.boolean ? "true" : "false";
-            for (size_t i = 0; text[i]; i++)
-                CharArray_append(&charArray, text[i]);
-        } break;
+        case JAC_TYPE_NULL:
+            while ((ca.len = snprintf(ca.data, ca.cap, "null") + 1) > ca.cap)
+                CharArray_resize(&ca);
+            break;
+        case JAC_TYPE_BOOL:
+            char* format = value.data.boolean ? "true" : "false";
+            while ((ca.len =
+                        snprintf(ca.data, ca.cap, format, value.data.inumber) +
+                        1) > ca.cap)
+                CharArray_resize(&ca);
+            break;
+        case JAC_TYPE_INT:
+            while (
+                (ca.len = snprintf(ca.data, ca.cap, "%d", value.data.inumber) +
+                          1) > ca.cap)
+                CharArray_resize(&ca);
+            break;
+        case JAC_TYPE_DOUBLE:
+            while (
+                (ca.len = snprintf(ca.data, ca.cap, "%g", value.data.dnumber) +
+                          1) > ca.cap)
+                CharArray_resize(&ca);
+            break;
         case JAC_TYPE_ARRAY:
-            CharArray_append(&charArray, '[');
+            CharArray_append(&ca, '[');
             for (size_t i = 0; i < value.data.array.len; ++i) {
                 jacString child = jac_encode(value.data.array.data[i]);
                 for (size_t j = 0; j < child.len; ++j)
-                    CharArray_append(&charArray, child.data[j]);
-                if (i + 1 < value.data.array.len)
-                    CharArray_append(&charArray, ',');
+                    CharArray_append(&ca, child.data[j]);
+                if (i + 1 < value.data.array.len) CharArray_append(&ca, ',');
                 free(child.data);
             }
-            CharArray_append(&charArray, ']');
+            CharArray_append(&ca, ']');
             break;
         case JAC_TYPE_STRING:
-            CharArray_append(&charArray, '"');
+            CharArray_append(&ca, '"');
             for (size_t i = 0; i < value.data.string.len; ++i)
-                CharArray_append(&charArray, value.data.string.data[i]);
-            CharArray_append(&charArray, '"');
-            break;
-        case JAC_TYPE_DOUBLE:
-            // TODO
+                CharArray_append(&ca, value.data.string.data[i]);
+            CharArray_append(&ca, '"');
             break;
         case JAC_TYPE_OBJECT:
-            CharArray_append(&charArray, '{');
+            CharArray_append(&ca, '{');
             size_t i = 0;
             jacString key = {0};
             jacValue field = {0};
@@ -415,23 +450,21 @@ jacString jac_encode(jacValue value) {
                  j < value.data.object.len &&
                  jacObject_iter(value.data.object, &i, &key, &field);
                  ++j) {
-                CharArray_append(&charArray, '"');
+                CharArray_append(&ca, '"');
                 for (size_t k = 0; k < key.len; ++k)
-                    CharArray_append(&charArray, key.data[k]);
-                CharArray_append(&charArray, '"');
-                CharArray_append(&charArray, ':');
+                    CharArray_append(&ca, key.data[k]);
+                CharArray_append(&ca, '"');
+                CharArray_append(&ca, ':');
                 jacString child = jac_encode(field);
                 for (size_t k = 0; k < child.len; ++k)
-                    CharArray_append(&charArray, child.data[k]);
+                    CharArray_append(&ca, child.data[k]);
                 free(child.data);
-                if (j + 1 < value.data.object.len)
-                    CharArray_append(&charArray, ',');
+                if (j + 1 < value.data.object.len) CharArray_append(&ca, ',');
             }
-            CharArray_append(&charArray, '}');
+            CharArray_append(&ca, '}');
         default:
             break;
     }
-    CharArray_append(&charArray, '\0');
-    return (jacString){
-        .data = charArray.data, .len = charArray.len - 1, .isView = false};
+    CharArray_append(&ca, '\0');
+    return (jacString){.data = ca.data, .len = ca.len - 1, .isView = false};
 };

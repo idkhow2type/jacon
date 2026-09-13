@@ -7,12 +7,13 @@
 #include <string.h>
 
 // array is readonly if cap = 0
-#define DECLARE_ARRAY(Name, T) \
-    typedef struct Name {      \
-        T* data;               \
-        size_t len;            \
-        size_t cap;            \
-    } Name;                    \
+#define DECLARE_ARRAY(Name, T)       \
+    typedef struct Name {            \
+        T* data;                     \
+        size_t len;                  \
+        size_t cap;                  \
+    } Name;                          \
+    bool Name##_resize(Name* array); \
     bool Name##_append(Name* array, T value);
 DECLARE_ARRAY(jacArray, struct jacValue);
 
@@ -94,7 +95,7 @@ bool jacObject_setjsval(jacObject* object, const jacString key,
     jacObject_setval(_Generic((object), jacObject*: object), \
                      _Generic((key), char*: key), jacValue_from(value))
 jacValue jacObject_getjs(const jacObject object, const jacString key);
-#define jacObject_get                              \
+#define jacObject_get                             \
     jacObject_getjs(object, key) jacObject_getjs( \
         _Generic((object), jacObject*: object),   \
         _Generic((key), char*: jacValue_from_cstr(key).data.string))
