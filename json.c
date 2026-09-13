@@ -370,7 +370,7 @@ static bool numberParser(const char** in, jacValue* out) {
     char d;
     if (!consumeSet(in, &d, "-0123456789")) goto fail;
     if (d == '-' && !consumeSet(in, &d, "0123456789")) goto fail;
-    if (d == '0' && !consumeSet(in, &d, "123456789")) goto fail;
+    if (d == '0' && consumeSet(in, &d, "0123456789")) goto fail;
 
     *out = (jacValue){.type = JAC_TYPE_INT,
                       .data.inumber = strtol(start, (char**)in, 10)};
