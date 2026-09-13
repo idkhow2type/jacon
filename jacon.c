@@ -118,10 +118,13 @@ bool jacObject_setjsval(jacObject* object, const jacString key,
     return true;
 }
 
-jacValue *jacObject_getjs(const jacObject* object, const jacString key) {
+jacValue* jacObject_getjs(const jacObject* object, const jacString key) {
+    if (object->len == 0) return NULL;
     size_t h = (hash(key.data, key.len) & (object->cap - 1));
-    for (size_t i = 0; !jacString_cmp(object->data[h].key, key); ++i)
+    for (size_t i = 0; !jacString_cmp(object->data[h].key, key); ++i) {
+        if (object->data[h].value.type == JAC_TYPE_UNDEFINED) return NULL;
         h = (h + (i + i * i) / 2) % object->cap;
+    }
     return &object->data[h].value;
 }
 
@@ -448,8 +451,16 @@ jacString jac_encode(jacValue value) {
             break;
         case JAC_TYPE_STRING:
             CharArray_append(&ca, '"');
-            for (size_t i = 0; i < value.data.string.len; ++i)
-                CharArray_append(&ca, value.data.string.data[i]);
+            for (size_t i = 0; i < value.data.string.len; ++i) {
+                char c = value.data.string.data[i];
+                if (c < 0x20) {
+                    char encode[7];
+                    sprintf(encode, "\\u00%02x", c);
+                    for (size_t i = 0; i < 7; i++)
+                        CharArray_append(&ca, encode[i]);
+                } else
+                    CharArray_append(&ca, c);
+            }
             CharArray_append(&ca, '"');
             break;
         case JAC_TYPE_OBJECT:
@@ -461,10 +472,10 @@ jacString jac_encode(jacValue value) {
                  j < value.data.object.len &&
                  jacObject_iter(value.data.object, &i, &key, &field);
                  ++j) {
-                CharArray_append(&ca, '"');
+                key = jac_encode(
+                    (jacValue){.type = JAC_TYPE_STRING, .data.string = key});
                 for (size_t k = 0; k < key.len; ++k)
                     CharArray_append(&ca, key.data[k]);
-                CharArray_append(&ca, '"');
                 CharArray_append(&ca, ':');
                 jacString child = jac_encode(field);
                 for (size_t k = 0; k < child.len; ++k)

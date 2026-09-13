@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <string.h>
 
-// array is readonly if cap = 0
 #define DECLARE_ARRAY(Name, T)       \
     typedef struct Name {            \
         T* data;                     \

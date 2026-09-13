@@ -1,11 +1,15 @@
 # jacon
+
 fully spec compliant json library
 
 ## usage
+
 download `jacon.h` and `jacon.c`, include it, done
 
 ## examples
+
 (view more in `examples/`)
+
 ```c
 #include <stdio.h>
 
@@ -33,19 +37,27 @@ int main() {
     jac_freeValue(&value);
 }
 ```
+
 stdout
+
 ```
 {"menu":{"id":"file","popup":{"menuitem":[{"onclick":"CreateNewDoc()","value":"New"},{"onclick":"OpenDoc()","value":"Open"},{"onclick":"CloseDoc()","value":"Close"}]},"value":"File"}}
 ```
 
 ## building
+
 - `make test` to build and run tests
 - `make examples` to build examples
 
 ## todo
+
 - [ ] support custom text encodings
+- [ ] arena allocator
+- [ ] nested object get/set, i.e. `jacObject_get(&obj,"key","subkey",...)`
+- [ ] custom test harness for library apis instead of just parsing test
 
 ## credits
+
 - [nst/JSONTestSuite](https://github.com/nst/JSONTestSuite) for their test cases and harness (a modified fork is linked in this repo as a submodule)
 - [this gist](https://gist.github.com/MightyPork/52eda3e5677b4b03524e40c9f0ab1da5) for their UTF-8 encoder
 - FNV-1a hash

@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
     }
     for (size_t repetition = 0; repetition < repetitions; ++repetition) {
         for (size_t i = 0; i < count; ++i)
-            checksum += jacObject_getjs(object, keys[i]).data.dnumber;
+            checksum += jacObject_getjs(&object, keys[i])->data.dnumber;
     }
     if (clock_gettime(CLOCK_MONOTONIC, &end) != 0) {
         perror("clock_gettime");

@@ -15,9 +15,9 @@ int main() {
 
     // Create an array of hobbies
     jacValue hobbies = {.type = JAC_TYPE_ARRAY};
-    jacArray_append(&hobbies.data.array, jacValue_from("Reading"));
-    jacArray_append(&hobbies.data.array, jacValue_from("Gaming"));
-    jacArray_append(&hobbies.data.array, jacValue_from("Coding"));
+    jacArray_append(&hobbies.data.array, (jacValue)jacValue_from("Reading"));
+    jacArray_append(&hobbies.data.array, (jacValue)jacValue_from("Gaming"));
+    jacArray_append(&hobbies.data.array, (jacValue)jacValue_from("Coding"));
 
     // Add the array to the person object
     jacObject_setval(&person.data.object, "hobbies", hobbies);
