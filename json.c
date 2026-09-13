@@ -274,7 +274,7 @@ fail:
     return false;
 }
 
-static const char specialMap[] = {
+static const char specialMap[256] = {
     ['"'] = '"',  ['\\'] = '\\', ['/'] = '/',  ['b'] = '\b',
     ['f'] = '\f', ['n'] = '\n',  ['r'] = '\r', ['t'] = '\t',
 };
@@ -292,7 +292,7 @@ static bool stringParser(const char** in, jacValue* out) {
     char flag = 0;
 
     while (flag || (!flag && !consumeLiteral(in, "\""))) {
-        char c = (*in)++[0];  // this is abuse
+        unsigned char c = (*in)++[0];  // this is abuse
         if (c == '\\') {
             c = (*in)++[0];
             if (c == 'u') {
@@ -313,7 +313,7 @@ static bool stringParser(const char** in, jacValue* out) {
                 if (!CharArray_append(&charArray, c)) goto fail;
             }
         } else {
-            if (c == '\0') goto fail;
+            if (c<20) goto fail;
             if (!CharArray_append(&charArray, c)) goto fail;
         }
     }

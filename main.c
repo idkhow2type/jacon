@@ -7,7 +7,7 @@
 
 int main() {
     jacValue value;
-    if (jac_parse("123\0", &value)) {
+    if (jac_parse("\"\\🌀\"", &value)) {
         jacString s = jac_encode(value);
         for (size_t i = 0; i < s.len; i++) printf("%c", s.data[i]);
         printf("\n");
