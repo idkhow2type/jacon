@@ -1,6 +1,4 @@
-*
-!*/
-!*.*
+main
+hashmap_perf
 
-!Makefile
 *.o
