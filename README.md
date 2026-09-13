@@ -1,5 +1,5 @@
 # jacon
-fully spec compliant json parser
+fully spec compliant json library
 
 ## usage
 download `jacon.h` and `jacon.c`, include it, done
@@ -8,7 +8,6 @@ download `jacon.h` and `jacon.c`, include it, done
 (view more in `examples/`)
 ```c
 #include <stdio.h>
-#include <stdlib.h>
 
 #include "jacon.h"
 
@@ -40,11 +39,14 @@ stdout
 ```
 
 ## building
-- `make test` to build and run tests from [nst/JSONTestSuite](https://github.com/nst/JSONTestSuite)
+- `make test` to build and run tests
 - `make examples` to build examples
 
-## credits
-- [nst/JSONTestSuite](https://github.com/nst/JSONTestSuite) for their test cases and harness (a modified fork is linked here as a submodule)
+## todo
+- [ ] support custom text encodings
 
-## license
-TODO
+## credits
+- [nst/JSONTestSuite](https://github.com/nst/JSONTestSuite) for their test cases and harness (a modified fork is linked in this repo as a submodule)
+- [this gist](https://gist.github.com/MightyPork/52eda3e5677b4b03524e40c9f0ab1da5) for their UTF-8 encoder
+- FNV-1a hash
+- various ais for being very annoying
