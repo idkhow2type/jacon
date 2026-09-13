@@ -1,5 +1,6 @@
 #include "json.h"
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -35,6 +36,22 @@
 DEFINE_ARRAY(jacArray, struct jacValue);
 DECLARE_ARRAY(CharArray, char);
 DEFINE_ARRAY(CharArray, char);
+
+static bool CharArray_format(CharArray* array, const char* format, ...) {
+    while (true) {
+        va_list args;
+        va_start(args, format);
+        int length = vsnprintf(array->data, array->cap, format, args);
+        va_end(args);
+
+        if (length < 0) return false;
+        if ((size_t)length < array->cap) {
+            array->len = (size_t)length;
+            return true;
+        }
+        if (!CharArray_resize(array)) return false;
+    }
+}
 
 bool jacString_cmp(jacString a, jacString b) {
     if (a.len != b.len) return false;
@@ -402,27 +419,16 @@ jacString jac_encode(jacValue value) {
     CharArray ca = MAKE_ARRAY(CharArray, char);
     switch (value.type) {
         case JAC_TYPE_NULL:
-            while ((ca.len = snprintf(ca.data, ca.cap, "null") + 1) > ca.cap)
-                CharArray_resize(&ca);
+            CharArray_format(&ca, "null");
             break;
         case JAC_TYPE_BOOL:
-            char* format = value.data.boolean ? "true" : "false";
-            while ((ca.len =
-                        snprintf(ca.data, ca.cap, format, value.data.inumber) +
-                        1) > ca.cap)
-                CharArray_resize(&ca);
+            CharArray_format(&ca, "%s", value.data.boolean ? "true" : "false");
             break;
         case JAC_TYPE_INT:
-            while (
-                (ca.len = snprintf(ca.data, ca.cap, "%d", value.data.inumber) +
-                          1) > ca.cap)
-                CharArray_resize(&ca);
+            CharArray_format(&ca, "%d", value.data.inumber);
             break;
         case JAC_TYPE_DOUBLE:
-            while (
-                (ca.len = snprintf(ca.data, ca.cap, "%g", value.data.dnumber) +
-                          1) > ca.cap)
-                CharArray_resize(&ca);
+            CharArray_format(&ca, "%g", value.data.dnumber);
             break;
         case JAC_TYPE_ARRAY:
             CharArray_append(&ca, '[');
