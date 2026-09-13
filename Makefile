@@ -18,6 +18,9 @@ examples: $(EXAMPLE_BINARIES)
 examples/%: examples/%.c jacon.o
 	$(CC) $^ $(CFLAGS) -o $@
 
+%: %.c jacon.o
+	$(CC) $^ $(CFLAGS) -o $@
+
 hashmap_perf: hashmap_perf.c jacon.o
 	$(CC) $^ -o $@
 perf-test: hashmap_perf

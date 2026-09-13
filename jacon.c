@@ -104,6 +104,8 @@ bool jacObject_setjsval(jacObject* object, const jacString key,
     if (object->len >= object->cap - object->cap / 4)
         if (!jacObject_resize(object)) return false;
 
+    // this assumes cap is a power of 2, which it usually is
+    // but there might be a better way
     size_t h = (hash(key.data, key.len) & (object->cap - 1));
     bool override = false;
     for (size_t i = 0; object->data[h].value.type != JAC_TYPE_UNDEFINED &&
@@ -116,11 +118,11 @@ bool jacObject_setjsval(jacObject* object, const jacString key,
     return true;
 }
 
-jacValue jacObject_getjs(const jacObject object, const jacString key) {
-    size_t h = (hash(key.data, key.len) & (object.cap - 1));
-    for (size_t i = 0; !jacString_cmp(object.data[h].key, key); ++i)
-        h = (h + (i + i * i) / 2) % object.cap;
-    return object.data[h].value;
+jacValue *jacObject_getjs(const jacObject* object, const jacString key) {
+    size_t h = (hash(key.data, key.len) & (object->cap - 1));
+    for (size_t i = 0; !jacString_cmp(object->data[h].key, key); ++i)
+        h = (h + (i + i * i) / 2) % object->cap;
+    return &object->data[h].value;
 }
 
 bool jacObject_iter(const jacObject object, size_t* i, jacString* key,
