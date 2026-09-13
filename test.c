@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "json.h"
+#include "jacon.h"
 
 typedef enum testStatus { ERROR, PASS, FAIL } TestStatus;
 

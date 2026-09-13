@@ -1,5 +1,7 @@
-main
 hashmap_perf
-test
+jacon_test
+
+examples/*
+!examples/*.c
 
 *.o

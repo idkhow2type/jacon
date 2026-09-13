@@ -1,4 +1,3 @@
-
 #ifndef JSON_H
 #define JSON_H
 
@@ -103,10 +102,11 @@ bool jacObject_iter(const jacObject object, size_t* i, jacString* key,
                     jacValue* value);
 
 bool jac_parsejs(const jacString in, jacValue* out);
-// this is kinda wasteful but it looks cool ig
-#define jac_parse(in, out)                                                 \
-    jac_parsejs(_Generic((in), char*: jacValue_from_cstr(in).data.string), \
-                _Generic((out), jacValue*: out))
+#define jac_parse(in, out)                                         \
+    jac_parsejs(                                                   \
+        _Generic((in), char*: jacValue_from_cstr(in).data.string), \
+        _Generic((out),                                            \
+            jacValue*: out))  // this is kinda wasteful but it looks cool ig
 void jac_freeValue(jacValue* value);
 jacString jac_encode(const jacValue value);
 
