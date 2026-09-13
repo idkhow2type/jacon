@@ -1,6 +1,8 @@
 {
-    "jacon":{
-        "url":"",
-        "commands":["test"]
+    "jacon": {
+        "url": "",
+        "commands": [
+            "test"
+        ]
     }
 }

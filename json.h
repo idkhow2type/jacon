@@ -102,7 +102,11 @@ jacValue jacObject_getjs(const jacObject object, const jacString key);
 bool jacObject_iter(const jacObject object, size_t* i, jacString* key,
                     jacValue* value);
 
-bool jac_parse(const char* in, jacValue* out);
+bool jac_parsejs(const jacString in, jacValue* out);
+// this is kinda wasteful but it looks cool ig
+#define jac_parse(in, out)                                                 \
+    jac_parsejs(_Generic((in), char*: jacValue_from_cstr(in).data.string), \
+                _Generic((out), jacValue*: out))
 void jac_freeValue(jacValue* value);
 jacString jac_encode(const jacValue value);
 

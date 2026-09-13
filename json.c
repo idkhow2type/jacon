@@ -313,7 +313,7 @@ static bool stringParser(const char** in, jacValue* out) {
                 if (!CharArray_append(&charArray, c)) goto fail;
             }
         } else {
-            if (c<20) goto fail;
+            if (c < 20) goto fail;
             if (!CharArray_append(&charArray, c)) goto fail;
         }
     }
@@ -409,8 +409,9 @@ static bool parseValue(const char** in, jacValue* out) {
     return false;
 }
 
-bool jac_parse(const char* in, jacValue* out) {
-    if (!parseValue(&in, out) || in[0] != '\0') {
+bool jac_parsejs(const jacString in, jacValue* out) {
+    const char* myin = in.data;
+    if (!parseValue(&myin, out) || myin < in.data + in.len) {
         *out = (jacValue){0};
         return false;
     }

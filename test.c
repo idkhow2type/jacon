@@ -5,9 +5,10 @@
 typedef enum testStatus { ERROR, PASS, FAIL } TestStatus;
 
 /* Parse text to JSON, then render back to text, and print! */
-TestStatus parseData(char* data, int printParsingResults) {
+TestStatus parseData(char* data, size_t len, int printParsingResults) {
+    jacString in={.data=data,.len=len};
     jacValue value;
-    if (!jac_parse(data, &value)) return FAIL;
+    if (!jac_parsejs(in, &value)) return FAIL;
     if (printParsingResults) {
         printf("-- in: %s", data);
         printf("-- out: %s", jac_encode(value).data);
@@ -49,7 +50,7 @@ TestStatus testFile(const char* filename, int printParsingResults) {
     fread(data, 1, len, f);
     data[len] = '\0';
     fclose(f);
-    TestStatus status = parseData(data, printParsingResults);
+    TestStatus status = parseData(data, len, printParsingResults);
     free(data);
     return status;
 }
