@@ -344,6 +344,8 @@ static bool objectParser(const char** in, jacValue* out) {
     if (!parseValue(in, &value)) goto fail;
     if (!jacObject_setjsval(&out->data.object, key.data.string, value))
         goto fail;
+    key = (jacValue){0};
+    value = (jacValue){0};
     while (!consumeLiteral(in, "}")) {
         if (!consumeLiteral(in, ",")) goto fail;
         if (!parseValue(in, &key) || key.type != JAC_TYPE_STRING) goto fail;

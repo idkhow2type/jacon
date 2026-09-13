@@ -1,0 +1,71 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include "json.h"
+
+typedef enum testStatus { ERROR, PASS, FAIL } TestStatus;
+
+/* Parse text to JSON, then render back to text, and print! */
+TestStatus parseData(char* data, int printParsingResults) {
+    jacValue value;
+    if (!jac_parse(data, &value)) return FAIL;
+    if (printParsingResults) {
+        printf("-- in: %s", data);
+        printf("-- out: %s", jac_encode(value).data);
+    }
+    jac_freeValue(&value);
+    return PASS;
+
+    // cJSON *json=cJSON_ParseWithOpts(data, NULL, 1);
+    // if (!json) {
+    //     //        if (printParsingResults) {
+    //     //            printf("Error before: [%s]\n",cJSON_GetErrorPtr());
+    //     //        }
+    //     return FAIL;
+    // }
+
+    // char *out=cJSON_Print(json);
+    // cJSON_Delete(json);
+    // if (!out) {
+    //     return FAIL;
+    // }
+    // if (printParsingResults) {
+    //     printf("--  in: %s\n", data);
+    //     printf("-- out: %s\n", out);
+    // }
+    // free(out);
+    // return PASS;
+}
+
+/* Read a file, parse, render back, etc. */
+TestStatus testFile(const char* filename, int printParsingResults) {
+    FILE* f = fopen(filename, "rb");
+    if (f == NULL) {
+        return ERROR;
+    };
+    fseek(f, 0, SEEK_END);
+    long len = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char* data = (char*)malloc(len + 1);
+    fread(data, 1, len, f);
+    data[len] = '\0';
+    fclose(f);
+    TestStatus status = parseData(data, printParsingResults);
+    free(data);
+    return status;
+}
+
+int main(int argc, const char* argv[]) {
+    if (argc < 2) return 1;
+
+    const char* path = argv[1];
+
+    int printParsingResults = 0;
+
+    int result = testFile(path, printParsingResults);
+
+    if (result == PASS) {
+        return 0;
+    } else {
+        return 1;
+    }
+}

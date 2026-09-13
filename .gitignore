@@ -1,4 +1,5 @@
 main
 hashmap_perf
+test
 
 *.o
