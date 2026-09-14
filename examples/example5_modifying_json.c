@@ -34,7 +34,8 @@ int main() {
     jacString modified = jac_encode(root);
     for (size_t i = 0; i < modified.len; i++) printf("%c", modified.data[i]);
     printf("\n\n");
-
+    
+    free(modified.data);
     jac_freeValue(&root);
 
     return 0;

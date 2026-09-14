@@ -36,8 +36,9 @@ int main() {
     printf("Generated JSON:\n");
     for (size_t i = 0; i < json.len; i++) printf("%c", json.data[i]);
     printf("\n\n");
-
+    
     // Clean up
+    free(json.data);
     jac_freeValue(&person);
 
     return 0;

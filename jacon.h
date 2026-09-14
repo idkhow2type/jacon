@@ -18,7 +18,7 @@ DECLARE_ARRAY(jacArray, struct jacValue);
 typedef struct jacString {
     char* data;
     size_t len;
-    bool isView;
+    bool isView : true;
 } jacString;
 
 typedef struct ObjectField ObjectField;
@@ -89,11 +89,17 @@ bool jacObject_setjsval(jacObject* object, const jacString key,
 #define jacObject_setjs(object, key, value)                    \
     jacObject_setjsval(_Generic((object), jacObject*: object), \
                        _Generic((key), jacString: key), jacValue_from(value))
+/*
+Signature
+```c
+bool jacObject_set(jacObject* object, char* key, value);
+```
+*/
 #define jacObject_set(object, key, value)                    \
     jacObject_setval(_Generic((object), jacObject*: object), \
                      _Generic((key), char*: key), jacValue_from(value))
 jacValue* jacObject_getjs(const jacObject* object, const jacString key);
-#define jacObject_get(object, key)                                         \
+#define jacObject_get(object, key)                                          \
     jacObject_getjs(_Generic((object), jacObject*: object), _Generic((key), \
                         char*: jacValue_from_cstr(key).data.string))
 bool jacObject_iter(const jacObject object, size_t* i, jacString* key,

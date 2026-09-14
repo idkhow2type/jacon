@@ -113,6 +113,10 @@ bool jacObject_setjsval(jacObject* object, const jacString key,
          ++i)
         h = (h + (i + i * i) / 2) % object->cap;
 
+    if (override) {
+        jac_freeValue(&object->data[h].value);
+        if (!object->data[h].key.isView) free(object->data[h].key.data);
+    }
     object->data[h] = (struct ObjectField){.value = value, .key = key};
     object->len += !override;
     return true;
@@ -476,6 +480,7 @@ jacString jac_encode(jacValue value) {
                     (jacValue){.type = JAC_TYPE_STRING, .data.string = key});
                 for (size_t k = 0; k < key.len; ++k)
                     CharArray_append(&ca, key.data[k]);
+                free(key.data);
                 CharArray_append(&ca, ':');
                 jacString child = jac_encode(field);
                 for (size_t k = 0; k < child.len; ++k)
