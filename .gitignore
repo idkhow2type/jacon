@@ -4,4 +4,6 @@ jacon_test
 examples/*
 !examples/*.c
 
+.vscode
+
 *.o

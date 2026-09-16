@@ -1,5 +1,5 @@
-#ifndef JSON_H
-#define JSON_H
+#ifndef JACON_H
+#define JACON_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -114,6 +114,6 @@ bool jac_parsejs(const jacString in, jacValue* out);
         _Generic((out),                                       \
             jacValue*: out))  // this is kinda wasteful but it looks cool ig
 void jac_freeValue(jacValue* value);
-jacString jac_encode(const jacValue value);
+bool jac_encode(const jacValue value, jacString* out);
 
 #endif

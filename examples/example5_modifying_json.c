@@ -30,12 +30,16 @@ int main() {
     jacObject_setval(&root.data.object, "settings", settings);
 
     // Print the modified JSON
-    printf("Modified JSON:\n");
-    jacString modified = jac_encode(root);
-    for (size_t i = 0; i < modified.len; i++) printf("%c", modified.data[i]);
-    printf("\n\n");
-    
-    free(modified.data);
+    jacString modified;
+    if (jac_encode(root, &modified)) {
+        printf("Modified JSON:\n");
+        for (size_t i = 0; i < modified.len; i++) printf("%c", modified.data[i]);
+        printf("\n\n");
+        free(modified.data);
+    } else {
+        printf("Error: Failed to encode JSON\n");
+    }
+
     jac_freeValue(&root);
 
     return 0;

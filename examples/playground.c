@@ -4,39 +4,22 @@
 
 #include "../jacon.h"
 
-// Example: Modifying parsed JSON
-int main() {
-    printf("=== Modifying parsed JSON ===\n\n");
-
-    const char* original = "{\"a\": 1}";
-    printf("Original JSON:\n%s\n\n", original);
-
-    jacValue root;
-    if (!jac_parse(original, &root)) {
-        printf("Error: Failed to parse JSON\n");
-        return 1;
+void printValue(const jacValue value) {
+    jacString s;
+    jac_encode(value,&s);
+    for (size_t i = 0; i < s.len; i++) {
+        printf("%c", s.data[i]);
     }
+    free(s.data);
+}
 
-    // Modify the user object
-    jacValue *user = jacObject_get(&root.data.object, "user");
-    jacObject_set(&root.data.object, "a", 26);
-    jacObject_set(&user->data.object, "email", "bob@example.com");
-    jacObject_set(&user->data.object, "verified", true);
-
-    // Add a settings object
-    jacValue settings = {.type = JAC_TYPE_OBJECT};
-    jacObject_set(&settings.data.object, "theme", "dark");
-    jacObject_set(&settings.data.object, "notifications", true);
-    jacObject_setval(&root.data.object, "settings", settings);
-
-    // Print the modified JSON
-    printf("Modified JSON:\n");
-    jacString modified = jac_encode(root);
-    for (size_t i = 0; i < modified.len; i++) printf("%c", modified.data[i]);
-    printf("\n\n");
-    
-    free(modified.data);
-    jac_freeValue(&root);
+int main() {
+    jacValue value;
+    if (jac_parse("\"\\t\"", &value)) {
+        printValue(value);
+        printf("\n");
+    } else
+        printf("err\n");
 
     return 0;
 }

@@ -12,6 +12,7 @@ download `jacon.h` and `jacon.c`, include it, done
 
 ```c
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "jacon.h"
 
@@ -29,9 +30,12 @@ int main() {
                   "  }"
                   "}}",
                   &value)) {
-        jacString s = jac_encode(value);
-        for (size_t i = 0; i < s.len; i++) printf("%c", s.data[i]);
-        printf("\n");
+        jacString s;
+        if (jac_encode(value, &s)) {
+            for (size_t i = 0; i < s.len; i++) printf("%c", s.data[i]);
+            printf("\n");
+            free(s.data);
+        }
     } else
         printf("err\n");
     jac_freeValue(&value);

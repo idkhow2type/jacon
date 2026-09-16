@@ -32,13 +32,16 @@ int main() {
     jacObject_setval(&person.data.object, "address", address);
 
     // Encode and print
-    jacString json = jac_encode(person);
-    printf("Generated JSON:\n");
-    for (size_t i = 0; i < json.len; i++) printf("%c", json.data[i]);
-    printf("\n\n");
-    
-    // Clean up
-    free(json.data);
+    jacString json;
+    if (jac_encode(person, &json)) {
+        printf("Generated JSON:\n");
+        for (size_t i = 0; i < json.len; i++) printf("%c", json.data[i]);
+        printf("\n\n");
+        free(json.data);
+    } else {
+        printf("Error: Failed to encode JSON\n");
+    }
+
     jac_freeValue(&person);
 
     return 0;

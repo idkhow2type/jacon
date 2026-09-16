@@ -1,40 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "jacon.h"
 
 typedef enum testStatus { ERROR, PASS, FAIL } TestStatus;
 
 /* Parse text to JSON, then render back to text, and print! */
 TestStatus parseData(char* data, size_t len, int printParsingResults) {
-    jacString in={.data=data,.len=len};
+    jacString in = {.data = data, .len = len};
     jacValue value;
     if (!jac_parsejs(in, &value)) return FAIL;
+    jacString s;
+    if (!jac_encode(value, &s)) return FAIL;
     if (printParsingResults) {
         printf("-- in: %s", data);
-        printf("-- out: %s", jac_encode(value).data);
+        printf("-- out: %s", s.data);
     }
     jac_freeValue(&value);
     return PASS;
-
-    // cJSON *json=cJSON_ParseWithOpts(data, NULL, 1);
-    // if (!json) {
-    //     //        if (printParsingResults) {
-    //     //            printf("Error before: [%s]\n",cJSON_GetErrorPtr());
-    //     //        }
-    //     return FAIL;
-    // }
-
-    // char *out=cJSON_Print(json);
-    // cJSON_Delete(json);
-    // if (!out) {
-    //     return FAIL;
-    // }
-    // if (printParsingResults) {
-    //     printf("--  in: %s\n", data);
-    //     printf("-- out: %s\n", out);
-    // }
-    // free(out);
-    // return PASS;
 }
 
 /* Read a file, parse, render back, etc. */

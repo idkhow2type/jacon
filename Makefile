@@ -17,6 +17,10 @@ test: jacon_test
 examples: $(EXAMPLE_BINARIES)
 examples/%: examples/%.c jacon.o
 	$(CC) $^ $(CFLAGS) -o $@
+	
+playground: examples/playground
+examples/playground: examples/playground.c jacon.o
+	$(CC) $^ $(CFLAGS) -o $@
 
 %: %.c jacon.o
 	$(CC) $^ $(CFLAGS) -o $@

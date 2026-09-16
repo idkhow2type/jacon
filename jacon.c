@@ -298,9 +298,8 @@ static bool stringParser(const char** in, jacValue* out) {
     CharArray charArray = MAKE_ARRAY(CharArray, char);
     const char* start = *in;
     if (!consumeLiteral(in, "\"")) goto fail;
-    char flag = 0;
 
-    while (flag || (!flag && !consumeLiteral(in, "\""))) {
+    while (!consumeLiteral(in, "\"")) {
         unsigned char c = (*in)++[0];  // this is abuse
         if (c == '\\') {
             c = (*in)++[0];
@@ -427,48 +426,60 @@ bool jac_parsejs(const jacString in, jacValue* out) {
     return true;
 }
 
-jacString jac_encode(jacValue value) {
+static const char escapeMap[256] = {
+    ['"'] = '"',  ['\\'] = '\\', ['/'] = '/',  ['\b'] = 'b',
+    ['\f'] = 'f', ['\n'] = 'n',  ['\r'] = 'r', ['\t'] = 't',
+};
+
+bool jac_encode(const jacValue value, jacString* out) {
     CharArray ca = MAKE_ARRAY(CharArray, char);
     switch (value.type) {
         case JAC_TYPE_NULL:
-            CharArray_format(&ca, "null");
+            if (!CharArray_format(&ca, "null")) goto fail;
             break;
         case JAC_TYPE_BOOL:
-            CharArray_format(&ca, "%s", value.data.boolean ? "true" : "false");
+            if (!CharArray_format(&ca, "%s",
+                                  value.data.boolean ? "true" : "false"))
+                goto fail;
             break;
         case JAC_TYPE_INT:
-            CharArray_format(&ca, "%d", value.data.inumber);
+            if (!CharArray_format(&ca, "%d", value.data.inumber)) goto fail;
             break;
         case JAC_TYPE_DOUBLE:
-            CharArray_format(&ca, "%g", value.data.dnumber);
+            if (!CharArray_format(&ca, "%g", value.data.dnumber)) goto fail;
             break;
         case JAC_TYPE_ARRAY:
-            CharArray_append(&ca, '[');
+            if (!CharArray_append(&ca, '[')) goto fail;
             for (size_t i = 0; i < value.data.array.len; ++i) {
-                jacString child = jac_encode(value.data.array.data[i]);
+                jacString child;
+                if (!jac_encode(value.data.array.data[i], &child)) goto fail;
                 for (size_t j = 0; j < child.len; ++j)
-                    CharArray_append(&ca, child.data[j]);
-                if (i + 1 < value.data.array.len) CharArray_append(&ca, ',');
+                    if (!CharArray_append(&ca, child.data[j])) goto fail;
+                if (i + 1 < value.data.array.len)
+                    if (!CharArray_append(&ca, ',')) goto fail;
                 free(child.data);
             }
-            CharArray_append(&ca, ']');
+            if (!CharArray_append(&ca, ']')) goto fail;
             break;
         case JAC_TYPE_STRING:
-            CharArray_append(&ca, '"');
+            if (!CharArray_append(&ca, '"')) goto fail;
             for (size_t i = 0; i < value.data.string.len; ++i) {
-                char c = value.data.string.data[i];
-                if (c < 0x20) {
+                unsigned char c = value.data.string.data[i];
+                if (escapeMap[(size_t)c]) {
+                    if (!CharArray_append(&ca, '\\')) goto fail;
+                    if (!CharArray_append(&ca, escapeMap[(size_t)c])) goto fail;
+                } else if (c < 0x20) {
                     char encode[7];
                     sprintf(encode, "\\u00%02x", c);
-                    for (size_t i = 0; i < 7; i++)
-                        CharArray_append(&ca, encode[i]);
-                } else
-                    CharArray_append(&ca, c);
+                    for (size_t j = 0; j < 7; j++)
+                        if (!CharArray_append(&ca, encode[j])) goto fail;
+                } else if (!CharArray_append(&ca, c))
+                    goto fail;
             }
-            CharArray_append(&ca, '"');
+            if (!CharArray_append(&ca, '"')) goto fail;
             break;
         case JAC_TYPE_OBJECT:
-            CharArray_append(&ca, '{');
+            if (!CharArray_append(&ca, '{')) goto fail;
             size_t i = 0;
             jacString key = {0};
             jacValue field = {0};
@@ -476,22 +487,29 @@ jacString jac_encode(jacValue value) {
                  j < value.data.object.len &&
                  jacObject_iter(value.data.object, &i, &key, &field);
                  ++j) {
-                key = jac_encode(
-                    (jacValue){.type = JAC_TYPE_STRING, .data.string = key});
+                if (!jac_encode(
+                        (jacValue){.type = JAC_TYPE_STRING, .data.string = key},
+                        &key))
+                    goto fail;
                 for (size_t k = 0; k < key.len; ++k)
-                    CharArray_append(&ca, key.data[k]);
+                    if (!CharArray_append(&ca, key.data[k])) goto fail;
                 free(key.data);
-                CharArray_append(&ca, ':');
-                jacString child = jac_encode(field);
+                if (!CharArray_append(&ca, ':')) goto fail;
+                jacString child;
+                if (!jac_encode(field, &child)) goto fail;
                 for (size_t k = 0; k < child.len; ++k)
-                    CharArray_append(&ca, child.data[k]);
+                    if (!CharArray_append(&ca, child.data[k])) goto fail;
                 free(child.data);
-                if (j + 1 < value.data.object.len) CharArray_append(&ca, ',');
+                if (j + 1 < value.data.object.len)
+                    if (!CharArray_append(&ca, ',')) goto fail;
             }
-            CharArray_append(&ca, '}');
+            if (!CharArray_append(&ca, '}')) goto fail;
         default:
             break;
     }
-    CharArray_append(&ca, '\0');
-    return (jacString){.data = ca.data, .len = ca.len - 1, .isView = false};
+    if (!CharArray_append(&ca, '\0')) goto fail;
+    *out = (jacString){.data = ca.data, .len = ca.len - 1, .isView = false};
+    return true;
+fail:
+    return false;
 };
