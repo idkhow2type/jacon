@@ -1,5 +1,5 @@
 hashmap_perf
-jacon_test
+test
 
 examples/*
 !examples/*.c

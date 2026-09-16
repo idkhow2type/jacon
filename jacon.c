@@ -471,7 +471,7 @@ bool jac_encode(const jacValue value, jacString* out) {
                 } else if (c < 0x20) {
                     char encode[7];
                     sprintf(encode, "\\u00%02x", c);
-                    for (size_t j = 0; j < 7; j++)
+                    for (size_t j = 0; j < 6; j++)
                         if (!CharArray_append(&ca, encode[j])) goto fail;
                 } else if (!CharArray_append(&ca, c))
                     goto fail;

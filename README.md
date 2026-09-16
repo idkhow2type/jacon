@@ -56,13 +56,12 @@ stdout
 ## todo
 
 - [ ] support custom text encodings
-- [ ] arena allocator
 - [ ] nested object get/set, i.e. `jacObject_get(&obj,"key","subkey",...)`
-- [ ] custom test harness for library apis instead of just parsing test
+- [x] custom test harness for library apis instead of just parsing test
 
 ## credits
 
-- [nst/JSONTestSuite](https://github.com/nst/JSONTestSuite) for their test cases and harness (a modified fork is linked in this repo as a submodule)
+- [nst/JSONTestSuite](https://github.com/nst/JSONTestSuite) for their test cases
 - [this gist](https://gist.github.com/MightyPork/52eda3e5677b4b03524e40c9f0ab1da5) for their UTF-8 encoder
 - FNV-1a hash
 - various ais for being very annoying

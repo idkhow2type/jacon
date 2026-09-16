@@ -9,10 +9,8 @@ all: test
 jacon.o: jacon.c
 	$(CC) $< -c $(CFLAGS) -o $@
 
-jacon_test: test.c jacon.o
+test: test.c jacon.o
 	$(CC) $^ $(CFLAGS) -o $@
-test: jacon_test
-	JSONTestSuite/run_tests.py test_meta.json .
 
 examples: $(EXAMPLE_BINARIES)
 examples/%: examples/%.c jacon.o
